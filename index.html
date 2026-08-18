@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#FCE7F3" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="2048" />
+    <title>2048 for Hadyn</title>
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div id="app">
+      <section class="gate" id="gate">
+        <svg class="gate-mark" viewBox="0 0 32 32" aria-hidden="true">
+          <path
+            fill="#0A0A0A"
+            d="M16 25s-8.5-5.2-8.5-11A4.5 4.5 0 0 1 16 11.2 4.5 4.5 0 0 1 24.5 14C24.5 19.8 16 25 16 25z"
+          />
+        </svg>
+        <h1>Hadyn</h1>
+        <p class="lede">four years · a game for two</p>
+        <form class="gate-form" id="gate-form" autocomplete="off">
+          <div class="field">
+            <label for="password">Password</label>
+            <div class="password-wrap">
+              <input
+                id="password"
+                name="password"
+                type="password"
+                required
+                maxlength="64"
+                spellcheck="false"
+                autocapitalize="off"
+                autocomplete="off"
+              />
+              <button
+                class="icon-btn"
+                type="button"
+                id="toggle-pw"
+                aria-label="Show password"
+                aria-pressed="false"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+              </button>
+            </div>
+          </div>
+          <p class="gate-error" id="gate-error" role="alert"></p>
+          <button class="btn btn-primary btn-block" type="submit" id="enter">
+            Enter
+          </button>
+        </form>
+      </section>
+    </div>
+
+    <div
+      class="modal-root center hidden"
+      id="welcome"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="welcome-text"
+    >
+      <div class="scrim" data-close="welcome"></div>
+      <div class="sheet">
+        <h2 id="welcome-text"></h2>
+        <button class="btn btn-primary btn-block" type="button" id="lets-play">
+          Let’s play
+        </button>
+      </div>
+    </div>
+
+    <div
+      class="modal-root hidden"
+      id="caption"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="caption-text"
+    >
+      <div class="scrim" data-close="caption"></div>
+      <div class="sheet">
+        <img class="caption-photo hidden" id="caption-photo" alt="" />
+        <p id="caption-text"></p>
+        <button class="btn btn-primary btn-block" type="button" data-close="caption">
+          Close
+        </button>
+      </div>
+    </div>
+
+    <template id="game-template">
+      <div class="game" id="game">
+        <header class="top">
+          <div class="brand">
+            <h1>2048</h1>
+            <p>for Hadyn</p>
+          </div>
+          <div class="scores">
+            <div class="score-card">
+              <span>score</span>
+              <strong id="score">0</strong>
+            </div>
+            <div class="score-card">
+              <span>best</span>
+              <strong id="best">0</strong>
+            </div>
+            <div class="score-card hidden" id="timer-card">
+              <span>time</span>
+              <strong id="timer">3:00</strong>
+            </div>
+          </div>
+        </header>
+
+        <div class="modes" role="tablist" aria-label="Game mode">
+          <button type="button" data-mode="classic" aria-selected="true">
+            Classic
+          </button>
+          <button type="button" data-mode="timed" aria-selected="false">
+            Timed
+          </button>
+          <button type="button" data-mode="zen" aria-selected="false">
+            Zen
+          </button>
+        </div>
+
+        <div class="board-wrap">
+          <div
+            class="board"
+            id="board"
+            tabindex="0"
+            aria-label="Game board. Swipe or use arrow keys. Tap a tile for a caption."
+          >
+            <div class="board-bg" aria-hidden="true">
+              <div class="cell"></div>
+              <div class="cell"></div>
+              <div class="cell"></div>
+              <div class="cell"></div>
+              <div class="cell"></div>
+              <div class="cell"></div>
+              <div class="cell"></div>
+              <div class="cell"></div>
+              <div class="cell"></div>
+              <div class="cell"></div>
+              <div class="cell"></div>
+              <div class="cell"></div>
+              <div class="cell"></div>
+              <div class="cell"></div>
+              <div class="cell"></div>
+              <div class="cell"></div>
+            </div>
+            <div class="board-tiles" id="tiles"></div>
+            <div class="overlay hidden" id="overlay">
+              <h2 id="overlay-title"></h2>
+              <p id="overlay-copy"></p>
+              <div class="overlay-actions">
+                <button class="btn btn-secondary" type="button" id="overlay-undo">
+                  Undo
+                </button>
+                <button class="btn btn-primary" type="button" id="overlay-new">
+                  New game
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <nav class="dock" aria-label="Game actions">
+          <button class="dock-btn" type="button" id="new-game">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 4v6h6" />
+              <path d="M20 20v-6h-6" />
+              <path d="M5 19A8 8 0 0 0 19 7" />
+              <path d="M19 5A8 8 0 0 0 5 17" />
+            </svg>
+            New
+          </button>
+          <button class="dock-btn" type="button" id="undo">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M9 14 4 9l5-5" />
+              <path d="M4 9h10a6 6 0 1 1 0 12h-3" />
+            </svg>
+            Undo
+          </button>
+          <button class="dock-btn" type="button" id="share">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="18" cy="5" r="3" />
+              <circle cx="6" cy="12" r="3" />
+              <circle cx="18" cy="19" r="3" />
+              <path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4" />
+            </svg>
+            Share
+          </button>
+          <button
+            class="dock-btn"
+            type="button"
+            id="music"
+            aria-pressed="false"
+            aria-label="Play music"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M9 18V5l12-2v13" />
+              <circle cx="6" cy="18" r="3" />
+              <circle cx="18" cy="16" r="3" />
+            </svg>
+            Music
+          </button>
+        </nav>
+        <audio id="bgm" src="audio/song.mp3" loop preload="none"></audio>
+      </div>
+    </template>
+
+    <script type="module" src="app.js"></script>
+  </body>
+</html>
