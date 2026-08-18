@@ -289,6 +289,12 @@ input:focus-visible,
   flex: 1;
 }
 
+.hint {
+  margin: 8px 0 0;
+  font-size: 0.75rem;
+  text-align: center;
+}
+
 .board {
   --cell: calc((100% - 5 * var(--gap)) / 4);
   width: min(100%, 480px, calc(100dvh - 16rem));

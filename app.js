@@ -251,7 +251,7 @@ function newGame() {
 }
 
 function applyMove(dir) {
-  if (ui.state.over) return;
+  if (!ui.state || ui.state.over) return;
   if (ui.mode === 'timed' && ui.remaining <= 0) return;
   const before = ui.state.grid.map((row) => row.slice());
   const result = move(ui.state, dir);
@@ -350,22 +350,49 @@ function bindKeys() {
     ArrowRight: 'right',
     ArrowUp: 'up',
     ArrowDown: 'down',
+    Left: 'left',
+    Right: 'right',
+    Up: 'up',
+    Down: 'down',
+    KeyA: 'left',
+    KeyD: 'right',
+    KeyW: 'up',
+    KeyS: 'down',
     a: 'left',
     d: 'right',
     w: 'up',
     s: 'down',
   };
-  window.addEventListener('keydown', (event) => {
-    if ($('welcome').classList.contains('hidden') === false) return;
-    if ($('caption').classList.contains('hidden') === false) {
-      if (event.key === 'Escape') closeCaption();
-      return;
-    }
-    const dir = map[event.key] || map[event.key.toLowerCase()];
-    if (!dir) return;
-    event.preventDefault();
-    applyMove(dir);
-  });
+
+  document.addEventListener(
+    'keydown',
+    (event) => {
+      if (event.ctrlKey || event.metaKey || event.altKey) return;
+      const target = event.target;
+      if (
+        target instanceof HTMLElement &&
+        (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')
+      ) {
+        return;
+      }
+
+      const welcome = document.getElementById('welcome');
+      if (welcome && !welcome.classList.contains('hidden')) return;
+
+      const caption = document.getElementById('caption');
+      if (caption && !caption.classList.contains('hidden')) {
+        if (event.key === 'Escape') closeCaption();
+        return;
+      }
+
+      const dir =
+        map[event.code] || map[event.key] || map[event.key.toLowerCase()];
+      if (!dir) return;
+      event.preventDefault();
+      applyMove(dir);
+    },
+    true,
+  );
 }
 
 async function shareCard() {
@@ -493,7 +520,6 @@ function bindGame() {
   ui.best = loadBest(ui.mode);
   newGame();
   bindSwipe($('board'));
-  bindKeys();
   bindMusic();
 
   document.querySelectorAll('.modes [data-mode]').forEach((btn) => {
@@ -533,6 +559,7 @@ function bindModals() {
 
 bindGate();
 bindModals();
+bindKeys();
 if (sessionStorage.getItem(SESSION_KEY) === '1') {
   openGame({ greet: false });
 }
