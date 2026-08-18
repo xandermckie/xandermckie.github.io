@@ -356,10 +356,6 @@ input:focus-visible,
 
 .tile {
   position: absolute;
-  width: var(--cell);
-  height: var(--cell);
-  left: calc(var(--c) * (var(--cell) + var(--gap)));
-  top: calc(var(--r) * (var(--cell) + var(--gap)));
   border-radius: 12px;
   overflow: hidden;
   background: var(--pink);
@@ -367,8 +363,8 @@ input:focus-visible,
   display: grid;
   place-items: center;
   cursor: pointer;
-  transition: left 200ms ease-out, top 200ms ease-out, transform 180ms var(--ease),
-    opacity 180ms var(--ease);
+  transition: transform 200ms ease-out, opacity 180ms var(--ease);
+  will-change: transform;
 }
 
 .tile img {

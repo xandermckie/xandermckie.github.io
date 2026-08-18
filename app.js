@@ -157,6 +157,15 @@ function getTileId(r, c, value) {
   return `${r}-${c}-${value}-${ui.nextTileId++}`;
 }
 
+function getCellSize() {
+  const board = $('board');
+  if (!board) return { cell: 0, gap: 8 };
+  const boardWidth = board.offsetWidth;
+  const gap = 8;
+  const cell = (boardWidth - 3 * gap) / 4;
+  return { cell, gap };
+}
+
 function createTileElement(id, r, c, value) {
   const tile = document.createElement('button');
   tile.type = 'button';
@@ -165,9 +174,13 @@ function createTileElement(id, r, c, value) {
   tile.dataset.r = String(r);
   tile.dataset.c = String(c);
   tile.dataset.value = String(value);
-  tile.style.setProperty('--r', String(r));
-  tile.style.setProperty('--c', String(c));
   tile.setAttribute('aria-label', CAPTIONS[value] || `tile ${value}`);
+
+  const { cell, gap } = getCellSize();
+  tile.style.left = `${c * (cell + gap)}px`;
+  tile.style.top = `${r * (cell + gap)}px`;
+  tile.style.width = `${cell}px`;
+  tile.style.height = `${cell}px`;
 
   const fallback = document.createElement('span');
   fallback.className = 'tile-fallback';
@@ -225,9 +238,28 @@ function renderTiles(animateSpawn) {
         const oldC = parseInt(reused.dataset.c, 10);
         reused.dataset.r = String(r);
         reused.dataset.c = String(c);
-        reused.style.setProperty('--r', String(r));
-        reused.style.setProperty('--c', String(c));
         reused.classList.remove('tile-new', 'tile-merged');
+
+        const { cell, gap } = getCellSize();
+        const cellSize = cell + gap;
+        
+        if (oldR !== r || oldC !== c) {
+          const deltaC = oldC - c;
+          const deltaR = oldR - r;
+          
+          reused.style.transform = `translate(${deltaC * cellSize}px, ${deltaR * cellSize}px)`;
+          reused.style.transition = 'none';
+          
+          reused.style.left = `${c * cellSize}px`;
+          reused.style.top = `${r * cellSize}px`;
+          
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              reused.style.transition = 'transform 200ms ease-out, opacity 180ms ease-out';
+              reused.style.transform = 'translate(0, 0)';
+            });
+          });
+        }
 
         const isMerged =
           !reducedMotion &&
