@@ -352,10 +352,13 @@ input:focus-visible,
 .board-tiles {
   position: absolute;
   inset: var(--gap);
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-template-rows: repeat(4, 1fr);
+  gap: var(--gap);
 }
 
 .tile {
-  position: absolute;
   border-radius: 12px;
   overflow: hidden;
   background: var(--pink);
@@ -365,6 +368,8 @@ input:focus-visible,
   cursor: pointer;
   transition: transform 200ms ease-out, opacity 180ms var(--ease);
   will-change: transform;
+  grid-column: var(--c);
+  grid-row: var(--r);
 }
 
 .tile img {

@@ -157,15 +157,6 @@ function getTileId(r, c, value) {
   return `${r}-${c}-${value}-${ui.nextTileId++}`;
 }
 
-function getCellSize() {
-  const board = $('board');
-  if (!board) return { cell: 0, gap: 8 };
-  const boardWidth = board.offsetWidth;
-  const gap = 8;
-  const cell = (boardWidth - 3 * gap) / 4;
-  return { cell, gap };
-}
-
 function createTileElement(id, r, c, value) {
   const tile = document.createElement('button');
   tile.type = 'button';
@@ -174,13 +165,9 @@ function createTileElement(id, r, c, value) {
   tile.dataset.r = String(r);
   tile.dataset.c = String(c);
   tile.dataset.value = String(value);
+  tile.style.setProperty('--r', String(r + 1));
+  tile.style.setProperty('--c', String(c + 1));
   tile.setAttribute('aria-label', CAPTIONS[value] || `tile ${value}`);
-
-  const { cell, gap } = getCellSize();
-  tile.style.left = `${c * (cell + gap)}px`;
-  tile.style.top = `${r * (cell + gap)}px`;
-  tile.style.width = `${cell}px`;
-  tile.style.height = `${cell}px`;
 
   const fallback = document.createElement('span');
   fallback.className = 'tile-fallback';
@@ -238,20 +225,25 @@ function renderTiles(animateSpawn) {
         const oldC = parseInt(reused.dataset.c, 10);
         reused.dataset.r = String(r);
         reused.dataset.c = String(c);
+        reused.style.setProperty('--r', String(r + 1));
+        reused.style.setProperty('--c', String(c + 1));
         reused.classList.remove('tile-new', 'tile-merged');
 
-        const { cell, gap } = getCellSize();
-        const cellSize = cell + gap;
-        
         if (oldR !== r || oldC !== c) {
           const deltaC = oldC - c;
           const deltaR = oldR - r;
           
-          reused.style.transform = `translate(${deltaC * cellSize}px, ${deltaR * cellSize}px)`;
-          reused.style.transition = 'none';
+          const tileRect = reused.getBoundingClientRect();
+          const cellWidth = tileRect.width;
+          const cellHeight = tileRect.height;
+          const container = reused.parentElement;
+          const gap = parseFloat(getComputedStyle(container).gap) || 8;
           
-          reused.style.left = `${c * cellSize}px`;
-          reused.style.top = `${r * cellSize}px`;
+          const offsetX = deltaC * (cellWidth + gap);
+          const offsetY = deltaR * (cellHeight + gap);
+          
+          reused.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
+          reused.style.transition = 'none';
           
           requestAnimationFrame(() => {
             requestAnimationFrame(() => {
