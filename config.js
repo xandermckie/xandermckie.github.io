@@ -1,11 +1,14 @@
 export const PASSWORD_SHA256 =
   '4f331fd786d5c521040a1fa4eeef266adb324cd03344c9dd61d7ce4b895596a7';
+export const PASSWORD_SHA256_P2 =
+  '3b220b715ffe46853fdf920afc5a1d7b26ea2e8ca0579d1634148297a9a87272';
 
 export const SESSION_KEY = 'anniv-2048-auth';
 export const BEST_KEY = 'anniv-2048-best';
 
-export const WELCOME_TEXT =
+export const WELCOME_TEXT_P1 =
   'welcome! happy 4th anniversary hadyn! i love you so much!';
+export const WELCOME_TEXT_P2 = "welcome player 2! let's see who wins";
 
 export const TIMED_SECONDS = 180;
 export const FAIL_LIMIT = 5;

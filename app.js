@@ -4,10 +4,12 @@ import {
   FAIL_LIMIT,
   FAIL_LOCK_MS,
   PASSWORD_SHA256,
+  PASSWORD_SHA256_P2,
   PHOTO_PATH,
   SESSION_KEY,
   TIMED_SECONDS,
-  WELCOME_TEXT,
+  WELCOME_TEXT_P1,
+  WELCOME_TEXT_P2,
 } from './config.js';
 import { SIZE, move, startGame, undo } from './game.js';
 
@@ -66,6 +68,12 @@ function bindGate() {
     input.type = show ? 'text' : 'password';
     toggle.setAttribute('aria-pressed', String(show));
     toggle.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+    const eyeOn = document.getElementById('eye-icon');
+    const eyeOff = document.getElementById('eye-off-icon');
+    if (eyeOn && eyeOff) {
+      eyeOn.classList.toggle('hidden', show);
+      eyeOff.classList.toggle('hidden', !show);
+    }
   });
 
   form.addEventListener('submit', async (event) => {
@@ -81,7 +89,14 @@ function bindGate() {
     const digest = await sha256Hex(input.value);
     enter.disabled = false;
 
-    if (!timingSafeEqual(digest, PASSWORD_SHA256)) {
+    let player = 0;
+    if (timingSafeEqual(digest, PASSWORD_SHA256)) {
+      player = 1;
+    } else if (timingSafeEqual(digest, PASSWORD_SHA256_P2)) {
+      player = 2;
+    }
+
+    if (!player) {
       fails += 1;
       if (fails >= FAIL_LIMIT) {
         lockedUntil = Date.now() + FAIL_LOCK_MS;
@@ -95,14 +110,16 @@ function bindGate() {
       return;
     }
 
-    sessionStorage.setItem(SESSION_KEY, '1');
+    ui.player = player;
+    sessionStorage.setItem(SESSION_KEY, String(player));
     openGame({ greet: true });
   });
 }
 
 function openWelcome() {
   const root = $('welcome');
-  $('welcome-text').textContent = WELCOME_TEXT;
+  const text = ui.player === 1 ? WELCOME_TEXT_P1 : WELCOME_TEXT_P2;
+  $('welcome-text').textContent = text;
   root.classList.remove('hidden');
   $('lets-play').focus();
 }
@@ -119,6 +136,7 @@ function mountGame() {
 }
 
 const ui = {
+  player: 1,
   mode: 'classic',
   state: null,
   best: 0,
@@ -127,64 +145,133 @@ const ui = {
   deadline: 0,
   lastSpawn: null,
   lastMerged: new Set(),
+  tileMap: new Map(),
+  nextTileId: 0,
+  p1State: null,
+  p2State: null,
+  activePlayer: 1,
+  versusScores: { p1: 0, p2: 0 },
 };
 
+function getTileId(r, c, value) {
+  return `${r}-${c}-${value}-${ui.nextTileId++}`;
+}
+
+function createTileElement(id, r, c, value) {
+  const tile = document.createElement('button');
+  tile.type = 'button';
+  tile.className = 'tile';
+  tile.dataset.id = id;
+  tile.dataset.r = String(r);
+  tile.dataset.c = String(c);
+  tile.dataset.value = String(value);
+  tile.style.setProperty('--r', String(r));
+  tile.style.setProperty('--c', String(c));
+  tile.setAttribute('aria-label', CAPTIONS[value] || `tile ${value}`);
+
+  const fallback = document.createElement('span');
+  fallback.className = 'tile-fallback';
+  fallback.textContent = String(value);
+  tile.append(fallback);
+
+  const img = document.createElement('img');
+  img.alt = '';
+  img.src = PHOTO_PATH(value);
+  img.addEventListener('load', () => tile.classList.add('has-photo'), { once: true });
+  img.addEventListener('error', () => img.remove(), { once: true });
+  tile.append(img);
+
+  tile.addEventListener('click', () => {
+    if (ignoreTileClick) {
+      ignoreTileClick = false;
+      return;
+    }
+    openCaption(value, img);
+  });
+
+  return tile;
+}
+
 function renderTiles(animateSpawn) {
-  const tiles = $('tiles');
-  tiles.replaceChildren();
+  const container = $('tiles');
+  const oldMap = new Map(ui.tileMap);
+  const newMap = new Map();
+  const gridSnapshot = new Map();
+
+  for (let r = 0; r < SIZE; r += 1) {
+    for (let c = 0; c < SIZE; c += 1) {
+      const value = ui.state.grid[r][c];
+      if (value) gridSnapshot.set(`${r},${c}`, value);
+    }
+  }
+
   for (let r = 0; r < SIZE; r += 1) {
     for (let c = 0; c < SIZE; c += 1) {
       const value = ui.state.grid[r][c];
       if (!value) continue;
-      const tile = document.createElement('button');
-      tile.type = 'button';
-      tile.className = 'tile';
-      tile.style.setProperty('--r', String(r));
-      tile.style.setProperty('--c', String(c));
-      tile.dataset.r = String(r);
-      tile.dataset.c = String(c);
-      tile.dataset.value = String(value);
-      tile.setAttribute('aria-label', CAPTIONS[value] || `tile ${value}`);
 
-      const fallback = document.createElement('span');
-      fallback.className = 'tile-fallback';
-      fallback.textContent = String(value);
-      tile.append(fallback);
-
-      const img = document.createElement('img');
-      img.alt = '';
-      img.src = PHOTO_PATH(value);
-      img.addEventListener('load', () => tile.classList.add('has-photo'));
-      img.addEventListener('error', () => img.remove());
-      tile.append(img);
-
-      const isSpawn =
-        animateSpawn &&
-        ui.lastSpawn &&
-        ui.lastSpawn.r === r &&
-        ui.lastSpawn.c === c &&
-        ui.lastSpawn.value === value;
-      if (!reducedMotion && isSpawn) tile.classList.add('tile-new');
-      if (!reducedMotion && ui.lastMerged.has(`${r},${c}`)) {
-        tile.classList.add('tile-merged');
+      let reused = null;
+      for (const [id, tile] of oldMap) {
+        const tileValue = parseInt(tile.dataset.value, 10);
+        if (tileValue === value) {
+          reused = tile;
+          oldMap.delete(id);
+          break;
+        }
       }
 
-      tile.addEventListener('click', () => {
-        if (ignoreTileClick) {
-          ignoreTileClick = false;
-          return;
+      if (reused) {
+        const oldR = parseInt(reused.dataset.r, 10);
+        const oldC = parseInt(reused.dataset.c, 10);
+        reused.dataset.r = String(r);
+        reused.dataset.c = String(c);
+        reused.style.setProperty('--r', String(r));
+        reused.style.setProperty('--c', String(c));
+        reused.classList.remove('tile-new', 'tile-merged');
+
+        const isMerged =
+          !reducedMotion &&
+          ui.lastMerged.has(`${r},${c}`) &&
+          (oldR !== r || oldC !== c);
+        if (isMerged) reused.classList.add('tile-merged');
+
+        newMap.set(reused.dataset.id, reused);
+      } else {
+        const id = getTileId(r, c, value);
+        const tile = createTileElement(id, r, c, value);
+        const isSpawn =
+          animateSpawn &&
+          ui.lastSpawn &&
+          ui.lastSpawn.r === r &&
+          ui.lastSpawn.c === c &&
+          ui.lastSpawn.value === value;
+        if (!reducedMotion && isSpawn) {
+          tile.classList.add('tile-new');
         }
-        openCaption(value, img);
-      });
-      tiles.append(tile);
+        newMap.set(id, tile);
+        container.append(tile);
+      }
     }
   }
+
+  for (const tile of oldMap.values()) {
+    tile.remove();
+  }
+
+  ui.tileMap = newMap;
 }
 
 function syncScores() {
-  $('score').textContent = String(ui.state.score);
-  ui.best = saveBest(ui.mode, ui.state.score);
-  $('best').textContent = String(ui.best);
+  if (ui.mode === 'versus') {
+    const p1Score = ui.activePlayer === 1 ? ui.state.score : ui.versusScores.p1;
+    const p2Score = ui.activePlayer === 2 ? ui.state.score : ui.versusScores.p2;
+    $('score').textContent = `P1: ${p1Score} | P2: ${p2Score}`;
+    $('best').textContent = String(Math.max(p1Score, p2Score));
+  } else {
+    $('score').textContent = String(ui.state.score);
+    ui.best = saveBest(ui.mode, ui.state.score);
+    $('best').textContent = String(ui.best);
+  }
   $('undo').disabled = ui.state.history.length === 0;
 }
 
@@ -198,6 +285,12 @@ function setOverlay(show, title, copy) {
 }
 
 function checkEnd() {
+  if (ui.mode === 'versus') {
+    if (ui.state.over) {
+      showPassDevice();
+    }
+    return;
+  }
   if (ui.mode === 'timed' && ui.remaining <= 0) {
     ui.state.over = true;
     setOverlay(true, 'time', 'the clock ran out.');
@@ -211,6 +304,88 @@ function checkEnd() {
     setOverlay(true, 'paused', 'no moves left — undo and keep going.');
   } else {
     setOverlay(true, 'game over', 'beautiful run. try again?');
+  }
+}
+
+function showPassDevice() {
+  const modal = $('pass-device');
+  const other = ui.activePlayer === 1 ? 2 : 1;
+  $('pass-title').textContent = 'Pass Device';
+  $('pass-text').textContent = `Hand the device to Player ${other}`;
+  modal.classList.remove('hidden');
+  $('pass-btn').focus();
+}
+
+function closePassDevice() {
+  $('pass-device').classList.add('hidden');
+}
+
+function switchPlayer() {
+  closePassDevice();
+  if (ui.activePlayer === 1) {
+    ui.versusScores.p1 = ui.state.score;
+    ui.p1State = {
+      grid: ui.state.grid.map((r) => r.slice()),
+      score: ui.state.score,
+      history: ui.state.history.map((h) => ({
+        grid: h.grid.map((r) => r.slice()),
+        score: h.score,
+      })),
+      over: ui.state.over,
+    };
+    ui.activePlayer = 2;
+    if (!ui.p2State) {
+      ui.state = startGame();
+    } else {
+      ui.state.grid = ui.p2State.grid.map((r) => r.slice());
+      ui.state.score = ui.p2State.score;
+      ui.state.history = ui.p2State.history.map((h) => ({
+        grid: h.grid.map((r) => r.slice()),
+        score: h.score,
+      }));
+      ui.state.over = ui.p2State.over;
+    }
+  } else {
+    ui.versusScores.p2 = ui.state.score;
+    ui.p2State = {
+      grid: ui.state.grid.map((r) => r.slice()),
+      score: ui.state.score,
+      history: ui.state.history.map((h) => ({
+        grid: h.grid.map((r) => r.slice()),
+        score: h.score,
+      })),
+      over: ui.state.over,
+    };
+    ui.activePlayer = 1;
+    ui.state.grid = ui.p1State.grid.map((r) => r.slice());
+    ui.state.score = ui.p1State.score;
+    ui.state.history = ui.p1State.history.map((h) => ({
+      grid: h.grid.map((r) => r.slice()),
+      score: h.score,
+    }));
+    ui.state.over = ui.p1State.over;
+  }
+
+  if (ui.p1State && ui.p1State.over && ui.p2State && ui.p2State.over) {
+    const p1 = ui.versusScores.p1;
+    const p2 = ui.versusScores.p2;
+    const winner = p1 > p2 ? 1 : p1 < p2 ? 2 : 0;
+    if (winner === 0) {
+      setOverlay(true, 'Tie!', `Both scored ${p1}. Play again?`);
+    } else {
+      setOverlay(
+        true,
+        `Player ${winner} wins!`,
+        `${p1} vs ${p2}. Ready for a rematch?`,
+      );
+    }
+  } else {
+    ui.tileMap.clear();
+    ui.nextTileId = 0;
+    $('tiles').replaceChildren();
+    syncScores();
+    renderTiles(false);
+    updateTurnBanner();
   }
 }
 
@@ -240,14 +415,37 @@ function startTimer() {
 }
 
 function newGame() {
+  if (ui.mode === 'versus') {
+    ui.p1State = null;
+    ui.p2State = null;
+    ui.activePlayer = 1;
+    ui.versusScores = { p1: 0, p2: 0 };
+  }
   ui.state = startGame();
   ui.lastSpawn = null;
   ui.lastMerged = new Set();
   ui.remaining = TIMED_SECONDS;
+  ui.tileMap.clear();
+  ui.nextTileId = 0;
+  const container = $('tiles');
+  container.replaceChildren();
   setOverlay(false);
   syncScores();
   renderTiles(true);
   startTimer();
+  updateTurnBanner();
+}
+
+function updateTurnBanner() {
+  const banner = document.getElementById('turn-banner');
+  if (!banner) return;
+  if (ui.mode === 'versus') {
+    banner.textContent = `Player ${ui.activePlayer}'s Turn`;
+    banner.classList.remove('hidden');
+    banner.dataset.player = String(ui.activePlayer);
+  } else {
+    banner.classList.add('hidden');
+  }
 }
 
 function applyMove(dir) {
@@ -512,7 +710,11 @@ function setMode(mode) {
   document.querySelectorAll('.modes [data-mode]').forEach((btn) => {
     btn.setAttribute('aria-selected', String(btn.dataset.mode === mode));
   });
-  ui.best = loadBest(mode);
+  if (mode === 'versus') {
+    ui.best = 0;
+  } else {
+    ui.best = loadBest(mode);
+  }
   newGame();
 }
 
@@ -543,6 +745,7 @@ function openGame({ greet }) {
 
 function bindModals() {
   $('lets-play').addEventListener('click', closeWelcome);
+  $('pass-btn').addEventListener('click', switchPlayer);
   document.querySelectorAll('[data-close]').forEach((el) => {
     el.addEventListener('click', () => {
       const id = el.getAttribute('data-close');
@@ -560,6 +763,8 @@ function bindModals() {
 bindGate();
 bindModals();
 bindKeys();
-if (sessionStorage.getItem(SESSION_KEY) === '1') {
+const savedPlayer = sessionStorage.getItem(SESSION_KEY);
+if (savedPlayer === '1' || savedPlayer === '2') {
+  ui.player = parseInt(savedPlayer, 10);
   openGame({ greet: false });
 }
