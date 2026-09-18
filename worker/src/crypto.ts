@@ -10,11 +10,30 @@ export function randomToken(bytes = 32): string {
   return [...buf].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-function timingSafeEqual(a: Uint8Array, b: Uint8Array): boolean {
-  if (a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i];
+export function timingSafeEqualBytes(a: Uint8Array, b: Uint8Array): boolean {
+  const len = Math.max(a.length, b.length);
+  let diff = a.length ^ b.length;
+  for (let i = 0; i < len; i++) {
+    diff |= (a[i] ?? 0) ^ (b[i] ?? 0);
+  }
   return diff === 0;
+}
+
+export function timingSafeEqualUtf8(left: string, right: string): boolean {
+  const encoder = new TextEncoder();
+  return timingSafeEqualBytes(encoder.encode(left), encoder.encode(right));
+}
+
+export async function hmacSha256Hex(secret: string, value: string): Promise<string> {
+  const key = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign'],
+  );
+  const mac = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(value));
+  return [...new Uint8Array(mac)].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
 function decodeSecret(secret: string): Uint8Array {
@@ -58,7 +77,7 @@ export async function verifyStandardWebhook(
   for (const candidate of candidates) {
     try {
       const given = Uint8Array.from(atob(candidate), (c) => c.charCodeAt(0));
-      if (timingSafeEqual(expected, given)) return true;
+      if (timingSafeEqualBytes(expected, given)) return true;
     } catch {
       continue;
     }

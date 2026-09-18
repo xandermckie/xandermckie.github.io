@@ -10,6 +10,13 @@ export interface Env {
   POLAR_API_BASE?: string;
   APP_ORIGIN: string;
   ENVIRONMENT?: string;
+  OPS_PATH?: string;
+  OPS_USERNAME?: string;
+  OPS_PASSWORD_HASH?: string;
+  OPS_PASSWORD_SALT?: string;
+  OPS_TOTP_SECRET?: string;
+  OPS_ALERT_EMAIL?: string;
+  OPS_IP_ALLOWLIST?: string;
 }
 
 interface D1PreparedStatement {
@@ -31,6 +38,8 @@ export interface UserRow {
   polar_customer_id: string | null;
   created_at: string;
   deleted_at: string | null;
+  locked_at: string | null;
+  locked_reason: string | null;
 }
 
 export interface EntitlementRow {

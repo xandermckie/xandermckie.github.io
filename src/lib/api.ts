@@ -9,6 +9,7 @@ export type PlanId = 'free' | 'pro';
 
 export interface MeResponse {
   authenticated: boolean;
+  id: string | null;
   email: string | null;
   displayName: string | null;
   bio: string | null;
@@ -100,6 +101,7 @@ async function request(path: string, init: RequestInit = {}): Promise<unknown> {
 export function fallbackMe(): MeResponse {
   return {
     authenticated: false,
+    id: null,
     email: null,
     displayName: null,
     bio: null,
@@ -116,6 +118,7 @@ export async function fetchMe(): Promise<MeResponse> {
   if (!isMeResponse(body)) throw new ApiError('Unexpected /api/me payload.', 500);
   return {
     ...body,
+    id: isString(body.id) ? body.id : null,
     email: isString(body.email) ? body.email : null,
     displayName: isString(body.displayName) ? body.displayName : null,
     bio: isString(body.bio) ? body.bio : null,

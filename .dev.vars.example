@@ -8,3 +8,13 @@ ENVIRONMENT=development
 # POLAR_WEBHOOK_SECRET=polar_whs_xxx
 # POLAR_PRODUCT_ID=prod_xxx
 # POLAR_API_BASE=https://sandbox-api.polar.sh
+
+# Operator console (never ship these values; generate a unique path per environment)
+# node scripts/hash-ops-password.mjs 'your-password'
+# OPS_PATH=/replace-with-32-plus-random-bytes-hex
+# OPS_USERNAME=operator
+# OPS_PASSWORD_SALT=
+# OPS_PASSWORD_HASH=
+# OPS_TOTP_SECRET=
+# OPS_ALERT_EMAIL=
+# OPS_IP_ALLOWLIST=127.0.0.1

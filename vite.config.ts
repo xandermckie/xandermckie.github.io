@@ -1,7 +1,35 @@
+import { existsSync, readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { buildSync } from 'esbuild';
 import { defineConfig } from 'vitest/config';
 import type { Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
+
+function localSecretPathProxy(): Record<string, { target: string; changeOrigin: boolean }> {
+  const file = resolve(process.cwd(), '.dev.vars');
+  if (!existsSync(file)) return {};
+  for (const line of readFileSync(file, 'utf8').split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    const eq = trimmed.indexOf('=');
+    if (eq === -1) continue;
+    if (trimmed.slice(0, eq).trim() !== 'OPS' + '_PATH') continue;
+    let value = trimmed.slice(eq + 1).trim();
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    ) {
+      value = value.slice(1, -1);
+    }
+    if (!value) return {};
+    if (!value.startsWith('/')) value = `/${value}`;
+    value = value.replace(/\/+$/, '');
+    return {
+      [value]: { target: 'http://127.0.0.1:8787', changeOrigin: true },
+    };
+  }
+  return {};
+}
 
 /** Bundle theme-init.ts to a blocking IIFE served at /theme-init.js. */
 function bundleThemeInit(): string {
@@ -92,11 +120,12 @@ export default defineConfig({
         target: 'http://127.0.0.1:8787',
         changeOrigin: true,
       },
+      ...localSecretPathProxy(),
     },
   },
   test: {
     environment: 'node',
-    include: ['src/**/__tests__/**/*.test.ts'],
+    include: ['src/**/__tests__/**/*.test.ts', 'worker/**/__tests__/**/*.test.ts'],
   },
   build: {
     chunkSizeWarningLimit: 900,

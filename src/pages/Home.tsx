@@ -9,6 +9,7 @@ import { useEntitlement } from '../context/EntitlementContext';
 import { useLanguage } from '../context/LanguageContext';
 import type { Difficulty, Exercise } from '../types/exercise';
 import { getAchievements, getGoalSummary, getReviewQueue, getStreakSummary } from '../lib/learning';
+import { homePitch } from '../lib/marketing-copy';
 
 interface HomeProps {
   onSelectExercise: (id: string) => void;
@@ -65,6 +66,7 @@ export default function Home({ onSelectExercise, onNavigate }: HomeProps) {
   const goal = useMemo(() => getGoalSummary(progress), [progress]);
   const achievements = useMemo(() => getAchievements(progress, history), [progress, history]);
   const unlockedAchievements = achievements.filter((a) => a.unlocked).length;
+  const pitch = homePitch(kit.languageName);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -145,6 +147,24 @@ export default function Home({ onSelectExercise, onNavigate }: HomeProps) {
           />
         </div>
       </header>
+
+      <section className="mb-10 max-w-2xl rounded-lg border border-border-tertiary bg-background-secondary p-5">
+        <h2 className="text-base font-medium text-content-primary">{pitch.headline}</h2>
+        {pitch.paragraphs.map((paragraph) => (
+          <p key={paragraph} className="mt-3 text-sm leading-relaxed text-content-secondary">
+            {paragraph}
+          </p>
+        ))}
+        {!isPro && onNavigate ? (
+          <button
+            type="button"
+            onClick={() => onNavigate('pricing')}
+            className="mt-4 min-h-11 rounded-md border border-accent px-4 py-2 text-sm font-medium text-accent hover:bg-background-tertiary"
+          >
+            See Pro
+          </button>
+        ) : null}
+      </section>
 
       {/* Review queue */}
       {reviewQueue.length > 0 && (

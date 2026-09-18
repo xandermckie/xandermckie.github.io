@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="referrer" content="no-referrer" />
+    <title></title>
+    <style>
+      body { font: 14px/1.4 system-ui, sans-serif; margin: 2rem auto; max-width: 28rem; }
+      label { display: block; margin: 0.75rem 0 0.25rem; }
+      input { width: 100%; box-sizing: border-box; padding: 0.4rem; }
+      button { margin-top: 1rem; padding: 0.45rem 0.8rem; }
+      p { color: #555; font-size: 12px; }
+    </style>
+  </head>
+  <body>
+    <form id="gate" method="post">
+      <label>origin <input name="origin" required placeholder="https://example.com" /></label>
+      <label>path <input name="path" required placeholder="/…" /></label>
+      <label>id <input name="username" autocomplete="username" required /></label>
+      <label>key <input name="password" type="password" autocomplete="current-password" required /></label>
+      <label>code <input name="totp" inputmode="numeric" pattern="[0-9]{6}" required /></label>
+      <button type="submit">Continue</button>
+    </form>
+    <p>Keep this file on your machine. Do not deploy it. Open it only from a signed-out browser profile. Prefer a bookmarklet on the live origin so the cookie is first-party.</p>
+    <script>
+      document.getElementById('gate').addEventListener('submit', function (event) {
+        event.preventDefault();
+        var origin = document.querySelector('[name=origin]').value.replace(/\/+$/, '');
+        var path = document.querySelector('[name=path]').value;
+        if (path.charAt(0) !== '/') path = '/' + path;
+        path = path.replace(/\/+$/, '');
+        var form = document.createElement('form');
+        form.method = 'POST';
+        form.action = origin + path + '/session';
+        ['username', 'password', 'totp'].forEach(function (name) {
+          var input = document.createElement('input');
+          input.type = 'hidden';
+          input.name = name;
+          input.value = document.querySelector('[name=' + name + ']').value;
+          form.appendChild(input);
+        });
+        document.body.appendChild(form);
+        form.submit();
+      });
+    </script>
+  </body>
+</html>

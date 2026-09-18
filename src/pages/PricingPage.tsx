@@ -1,6 +1,8 @@
 import { FREE_DAILY_CAP, PRO_PRICE_LABEL, PRO_INTERVAL_LABEL, REFUND_DAYS } from '../lib/legal';
+import { PRICING_WHY } from '../lib/marketing-copy';
 import type { AppView } from '../lib/routes';
 import { useEntitlement } from '../context/EntitlementContext';
+import { useLanguage } from '../context/LanguageContext';
 
 interface PricingPageProps {
   onNavigate: (view: AppView) => void;
@@ -9,15 +11,17 @@ interface PricingPageProps {
 
 export default function PricingPage({ onNavigate, onUpgrade }: PricingPageProps) {
   const { me, isPro } = useEntitlement();
+  const { kit } = useLanguage();
 
   return (
     <div className="mx-auto w-full max-w-3xl pb-12">
       <header className="mb-10">
         <h1 className="text-lg font-medium text-content-primary">Pricing</h1>
-        <p className="mt-2 text-sm text-content-secondary">
-          PyTyping Pro is {PRO_PRICE_LABEL} per {PRO_INTERVAL_LABEL}. It <strong>automatically renews</strong> until you
-          cancel in the Polar customer portal. Polar is the merchant of record. One Pro subscription unlocks every
-          language edition on this site.
+        <p className="mt-2 text-sm leading-relaxed text-content-secondary">{PRICING_WHY}</p>
+        <p className="mt-3 text-sm text-content-secondary">
+          {kit.productName} Pro is {PRO_PRICE_LABEL} per {PRO_INTERVAL_LABEL}. It <strong>automatically renews</strong>{' '}
+          until you cancel in the Polar customer portal. Polar is the merchant of record. One Pro subscription unlocks
+          every language edition on this site.
         </p>
       </header>
 

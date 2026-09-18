@@ -42,6 +42,8 @@ export async function upsertUser(env: Env, email: string): Promise<UserRow> {
     polar_customer_id: null,
     created_at: new Date().toISOString(),
     deleted_at: null,
+    locked_at: null,
+    locked_reason: null,
   };
   await env.DB.prepare(
     'INSERT INTO users (id, email, display_name, bio, polar_customer_id, created_at) VALUES (?, ?, ?, NULL, NULL, ?)',
@@ -72,7 +74,7 @@ export async function userFromRequest(env: Env, request: Request): Promise<UserR
   const hash = await sha256Hex(token);
   const row = await env.DB.prepare(
     `SELECT u.* FROM sessions s JOIN users u ON u.id = s.user_id
-     WHERE s.token_hash = ? AND s.expires_at > ? AND u.deleted_at IS NULL`,
+     WHERE s.token_hash = ? AND s.expires_at > ? AND u.deleted_at IS NULL AND u.locked_at IS NULL`,
   )
     .bind(hash, new Date().toISOString())
     .first<UserRow>();

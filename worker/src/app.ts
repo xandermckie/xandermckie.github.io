@@ -28,6 +28,7 @@ import {
   revokePolarSubscription,
 } from './polar';
 import { rateLimit } from './rate-limit';
+import { recordHttpEvent } from './ops/metrics';
 
 const FREE_DAILY_CAP = 5;
 const MAGIC_TTL_MS = 15 * 60 * 1000;
@@ -65,7 +66,7 @@ async function remainingFor(env: Env, user: UserRow): Promise<{ plan: 'free' | '
   return { plan: 'free', remaining: Math.max(0, FREE_DAILY_CAP - used) };
 }
 
-export async function handleApi(request: Request, env: Env): Promise<Response> {
+async function dispatchApi(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);
   const path = url.pathname;
   const method = request.method;
@@ -84,6 +85,7 @@ export async function handleApi(request: Request, env: Env): Promise<Response> {
       if (!user) {
         return json({
           authenticated: false,
+          id: null,
           email: null,
           displayName: null,
           bio: null,
@@ -98,6 +100,7 @@ export async function handleApi(request: Request, env: Env): Promise<Response> {
       const entitlement = await getEntitlement(env, user.id);
       return json({
         authenticated: true,
+        id: user.id,
         email: user.email,
         displayName: user.display_name,
         bio: user.bio,
@@ -153,6 +156,9 @@ export async function handleApi(request: Request, env: Env): Promise<Response> {
         return Response.redirect(`${env.APP_ORIGIN}/login?error=expired`, 302);
       }
       const user = await upsertUser(env, row.email);
+      if (user.locked_at) {
+        return Response.redirect(`${env.APP_ORIGIN}/login?error=expired`, 302);
+      }
       const session = await createSession(env, user.id);
       const headers = new Headers({
         Location: `${env.APP_ORIGIN}/settings?signed_in=1`,
@@ -417,4 +423,10 @@ export async function handleApi(request: Request, env: Env): Promise<Response> {
     const message = err instanceof Error ? err.message : 'Server error.';
     return errorJson(isDev(env) ? message : 'Server error.', 500);
   }
+}
+
+export async function handleApi(request: Request, env: Env): Promise<Response> {
+  const response = await dispatchApi(request, env);
+  await recordHttpEvent(env, new URL(request.url).pathname, response.status);
+  return response;
 }

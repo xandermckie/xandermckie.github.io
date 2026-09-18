@@ -278,10 +278,17 @@ export default function Settings({ onShowLogin, onManageFriends, onNavigate, onR
         <SectionTitle>Account</SectionTitle>
         <div className="rounded-lg border border-border-tertiary bg-background-secondary p-4">
           {me.authenticated ? (
-            <p className="text-sm text-content-primary">
-              Cloud: <span className="font-medium">{me.email}</span>{' '}
-              <span className="text-content-tertiary">({isPro ? 'Pro' : 'Free'})</span>
-            </p>
+            <>
+              <p className="text-sm text-content-primary">
+                Cloud: <span className="font-medium">{me.email}</span>{' '}
+                <span className="text-content-tertiary">({isPro ? 'Pro' : 'Free'})</span>
+              </p>
+              {me.id ? (
+                <p className="mt-2 text-sm text-content-secondary">
+                  Account ID: <span className="font-mono text-content-primary">{me.id}</span>
+                </p>
+              ) : null}
+            </>
           ) : (
             <p className="text-sm text-content-secondary">
               No cloud account on this browser. Cloud sign-in is required for Pro and the daily completion cap.
