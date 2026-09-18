@@ -1,0 +1,10 @@
+# Copy to .dev.vars for local `wrangler dev`. Never commit real secrets.
+SESSION_SECRET=dev-session-secret-change-me
+APP_ORIGIN=http://localhost:5173
+ENVIRONMENT=development
+# RESEND_API_KEY=re_xxx
+# MAGIC_FROM_EMAIL=PyTyping <signin@yourdomain>
+# POLAR_ACCESS_TOKEN=polar_at_xxx
+# POLAR_WEBHOOK_SECRET=polar_whs_xxx
+# POLAR_PRODUCT_ID=prod_xxx
+# POLAR_API_BASE=https://sandbox-api.polar.sh

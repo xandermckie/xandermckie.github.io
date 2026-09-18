@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>PyTyping</title>
+    <script>
+      sessionStorage.setItem(
+        'pytyping:spa-path',
+        location.pathname + location.search + location.hash,
+      );
+      location.replace('/');
+    </script>
+  </head>
+  <body>
+    <p>Redirecting…</p>
+  </body>
+</html>

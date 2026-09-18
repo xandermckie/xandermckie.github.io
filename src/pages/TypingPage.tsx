@@ -4,12 +4,14 @@ import QuizPanel from '../components/QuizPanel';
 import BreakdownPanel from '../components/BreakdownPanel';
 import ResultsPanel from '../components/ResultsPanel';
 import CodePeekPanel from '../components/CodePeekPanel';
-import { EXERCISES, getExerciseById } from '../lib/exercises';
+import { EXERCISES, getExerciseById as getBundledExercise } from '../lib/exercises';
 import { getAttempts, getHistory, getProgress, recordCompletion } from '../lib/progress';
 import type { AttemptSummary } from '../lib/progress';
 import { buildReplay, getBestReplay, saveReplay } from '../lib/replays';
 import { useSession } from '../context/SessionContext';
 import { useSettings } from '../context/SettingsContext';
+import { useEntitlement } from '../context/EntitlementContext';
+import type { UpgradeReason } from '../context/EntitlementContext';
 import type { ReplayEvent } from '../types/replay';
 import type { QuizScore, TypingStats } from '../types/exercise';
 import { getRecommendedExerciseId } from '../lib/learning';
@@ -21,6 +23,7 @@ interface TypingPageProps {
   onStartRace?: (exerciseId: string, source: import('../types/replay').GhostSource) => void;
   /** Bubble typing-focus up so the app shell can fade its chrome (zen mode). */
   onFocusChange?: (focused: boolean) => void;
+  onUpgradeNeeded?: (reason: UpgradeReason) => void;
 }
 
 type Phase = 'typing' | 'results' | 'quiz' | 'breakdown';
@@ -53,7 +56,11 @@ export default function TypingPage({
   onSelectExercise,
   onStartRace,
   onFocusChange,
+  onUpgradeNeeded,
 }: TypingPageProps) {
+  const { interviewExercises, consumeCompletion } = useEntitlement();
+  const getExerciseById = (id: string) =>
+    getBundledExercise(id) ?? interviewExercises.find((item) => item.id === id);
   const exercise = getExerciseById(exerciseId);
   const { scopeId, displayName, notifyProgressChange, notifyReplayChange } = useSession();
   const { settings } = useSettings();
@@ -83,8 +90,8 @@ export default function TypingPage({
   }, [exercise]);
   const recommendedExerciseId = useMemo(() => {
     if (!exercise) return null;
-    return getRecommendedExerciseId(exercise.id, related, EXERCISES, getProgress(scopeId), getHistory(scopeId));
-  }, [exercise, related, scopeId, phase]);
+    return getRecommendedExerciseId(exercise.id, related, [...EXERCISES, ...interviewExercises], getProgress(scopeId), getHistory(scopeId));
+  }, [exercise, related, scopeId, phase, interviewExercises]);
 
   // Whenever we leave the typing phase, make sure the chrome is visible again.
   useEffect(() => {
@@ -152,10 +159,16 @@ export default function TypingPage({
         } else {
           setSaveWarning('Your progress could not be saved. Storage may be full or disabled.');
         }
+        void consumeCompletion(exercise.id).then((result) => {
+          if (!result.allowed) {
+            setSaveWarning(result.error ?? 'Daily free limit reached.');
+            onUpgradeNeeded?.('cap');
+          }
+        });
       }
       setPhase('breakdown');
     },
-    [scopeId, exercise, notifyProgressChange, typingStats],
+    [scopeId, exercise, notifyProgressChange, typingStats, consumeCompletion, onUpgradeNeeded],
   );
 
   if (!exercise) {

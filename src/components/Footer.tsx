@@ -1,10 +1,11 @@
-import { APP_VERSION, AUTHOR_NAME, BUY_ME_A_COFFEE_URL, GITHUB_URL, MONKEYTYPE_URL } from '../lib/links';
+import { BUY_ME_A_COFFEE_URL, GITHUB_URL, MONKEYTYPE_URL } from '../lib/links';
+import { APP_VERSION, AUTHOR_NAME } from '../lib/links';
+import { LEGAL_NAV } from '../lib/routes';
+import type { AppView } from '../lib/routes';
 
 interface FooterProps {
-  /** Faded out (and click-blocked) during focused typing — zen mode. */
   hidden: boolean;
-  /** Open the About & legal view. */
-  onShowLegal: () => void;
+  onNavigate: (view: AppView) => void;
 }
 
 const TIPS: Array<{ keys: string; label: string }> = [
@@ -13,11 +14,7 @@ const TIPS: Array<{ keys: string; label: string }> = [
   { keys: 'tab', label: 'indent' },
 ];
 
-/**
- * Bottom bar: keyboard hints, credits, and legal links. Fades out (and stops
- * intercepting clicks) while the user is actively typing.
- */
-export default function Footer({ hidden, onShowLegal }: FooterProps) {
+export default function Footer({ hidden, onNavigate }: FooterProps) {
   return (
     <footer
       id="site-footer"
@@ -37,11 +34,26 @@ export default function Footer({ hidden, onShowLegal }: FooterProps) {
           ))}
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-border-tertiary pt-3">
+        <nav aria-label="Legal" className="flex flex-wrap gap-x-3 gap-y-2 border-t border-border-tertiary pt-3">
+          {LEGAL_NAV.map((item) => (
+            <a
+              key={item.path}
+              href={item.path}
+              onClick={(event) => {
+                event.preventDefault();
+                onNavigate(item.view);
+              }}
+              className="min-h-11 inline-flex items-center text-content-secondary underline-offset-2 hover:text-accent hover:underline"
+            >
+              {item.label}
+            </a>
+          ))}
+        </nav>
+
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
           <span className="font-mono">
             py<span className="text-accent">typing</span> v{APP_VERSION}
           </span>
-          <span aria-hidden="true">·</span>
           <span>
             created by{' '}
             <a
@@ -53,7 +65,6 @@ export default function Footer({ hidden, onShowLegal }: FooterProps) {
               {AUTHOR_NAME}
             </a>
           </span>
-          <span aria-hidden="true">·</span>
           <span>
             inspired by{' '}
             <a
@@ -65,17 +76,6 @@ export default function Footer({ hidden, onShowLegal }: FooterProps) {
               Monkeytype
             </a>
           </span>
-          <button
-            type="button"
-            onClick={onShowLegal}
-            className="text-content-secondary underline-offset-2 hover:text-accent hover:underline"
-          >
-            About & legal
-          </button>
-        </div>
-
-        <p className="text-content-secondary">
-          Enjoying PyTyping?{' '}
           <a
             href={BUY_ME_A_COFFEE_URL}
             target="_blank"
@@ -84,8 +84,7 @@ export default function Footer({ hidden, onShowLegal }: FooterProps) {
           >
             Buy me a coffee
           </a>
-          . Optional. Thanks if you want to support development.
-        </p>
+        </div>
       </div>
     </footer>
   );

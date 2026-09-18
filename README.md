@@ -13,7 +13,10 @@ Learn Python by typing real code — with instant feedback, quizzes, ghost racin
 - **Friends** — friend codes (`PYT1:…`), JSON share, profile photos; fully offline
 - **Leaderboard** — overall progress and race records
 - **Pomodoro** — focus/break timer with optional browser notifications
-- **Local accounts & backup** — no server; export/import v3 backup to move data
+- **Local accounts & backup** — device profiles plus optional cloud email sign-in
+- **PyTyping Pro** — $2.99/month via Polar: unlimited completions, interview pack, cloud sync
+
+The public catalog still runs in the browser. Cloud accounts, daily limits, and Pro billing need the Cloudflare Worker (see [docs/LAUNCH.md](docs/LAUNCH.md)).
 - **IDE-style typing** — Tab, auto-indent, VS Code delimiter pairing
 - **Command palette** — `Ctrl/⌘ + K` for navigation and themes
 
@@ -35,6 +38,8 @@ npm run dev
 | `npm run preview` | Preview production build |
 | `npm test` | Run unit tests |
 | `npm run typecheck` | TypeScript check |
+| `npm run dev:api` | Local Cloudflare Worker + D1 on :8787 |
+| `npm run deploy:cf` | Build and deploy Worker + assets |
 
 ---
 
@@ -53,7 +58,12 @@ git push origin v1.0.0
 
 ## Deploy
 
-Build with `npm run build` and deploy the `dist/` folder to any static host. Configured for root hosting (`base: '/'` in Vite — suitable for GitHub Pages user sites).
+The static GitHub Pages site can still host the client. Paid features require Cloudflare Workers + D1 + Polar. See [docs/LAUNCH.md](docs/LAUNCH.md).
+
+```bash
+npm run build
+npm run deploy:cf
+```
 
 ---
 

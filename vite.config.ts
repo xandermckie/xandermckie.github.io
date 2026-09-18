@@ -59,8 +59,9 @@ function cspPlugin(): Plugin {
     "font-src 'self' https://fonts.gstatic.com",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "script-src 'self'",
-    "connect-src 'self'",
-    "form-action 'none'",
+    "connect-src 'self' https://polar.sh https://sandbox.polar.sh",
+    "form-action 'self' https://polar.sh https://sandbox.polar.sh",
+    "upgrade-insecure-requests",
   ].join('; ');
 
   return {
@@ -85,6 +86,14 @@ export default defineConfig({
   // to '/<repo>/' instead.
   base: '/',
   plugins: [themeInitPlugin(), react(), cspPlugin()],
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://127.0.0.1:8787',
+        changeOrigin: true,
+      },
+    },
+  },
   test: {
     environment: 'node',
     include: ['src/**/__tests__/**/*.test.ts'],

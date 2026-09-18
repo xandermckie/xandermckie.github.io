@@ -22,4 +22,4 @@ export function allTopics(): string[] {
   return [...set].sort();
 }
 
-export const DIFFICULTIES: Difficulty[] = ['beginner', 'intermediate', 'advanced'];
+export const DIFFICULTIES: Difficulty[] = ['beginner', 'intermediate', 'advanced', 'interview'];

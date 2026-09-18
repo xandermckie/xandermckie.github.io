@@ -1,0 +1,19 @@
+name = "pytyping"
+main = "worker/src/index.ts"
+compatibility_date = "2025-10-01"
+compatibility_flags = ["nodejs_compat"]
+
+[assets]
+directory = "./dist"
+not_found_handling = "single-page-application"
+
+[vars]
+APP_ORIGIN = "http://localhost:5173"
+ENVIRONMENT = "development"
+POLAR_API_BASE = "https://sandbox-api.polar.sh"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "pytyping"
+database_id = "00000000-0000-0000-0000-000000000000"
+migrations_dir = "worker/migrations"

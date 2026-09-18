@@ -1,22 +1,24 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { SettingsProvider, useSettings } from './context/SettingsContext';
 import { SessionProvider, useSession } from './context/SessionContext';
 import { PomodoroProvider } from './context/PomodoroContext';
+import { EntitlementProvider, useEntitlement } from './context/EntitlementContext';
 import ErrorBoundary from './components/ErrorBoundary';
-import AppHeader, { type AppView } from './components/AppHeader';
+import AppHeader from './components/AppHeader';
 import Home from './pages/Home';
 import LoginScreen from './components/LoginScreen';
 import Footer from './components/Footer';
 import CommandPalette from './components/CommandPalette';
 import PomodoroWidget from './components/PomodoroWidget';
+import UpgradeModal from './components/UpgradeModal';
 import type { Command } from './components/CommandPalette';
 import { EXERCISES } from './lib/exercises';
-import { THEME_OPTIONS } from './lib/theme';
+import { PRO_THEME_IDS, THEME_OPTIONS } from './lib/theme';
 import { registerGlobalErrorHandlers } from './lib/global-errors';
+import { pathFromView, viewFromPath, type AppView } from './lib/routes';
 import type { GhostSource } from './types/replay';
+import type { UpgradeReason } from './context/EntitlementContext';
 
-// Lazy-load pages not needed on the initial render — keeps the first-paint
-// bundle lean. Each becomes its own chunk that Vite splits automatically.
 const TypingPage = lazy(() => import('./pages/TypingPage'));
 const PythonGuide = lazy(() => import('./pages/PythonGuide'));
 const Contribute = lazy(() => import('./pages/Contribute'));
@@ -28,6 +30,13 @@ const Settings = lazy(() => import('./components/Settings'));
 const ProgressTracker = lazy(() => import('./components/ProgressTracker'));
 const Friends = lazy(() => import('./pages/Friends'));
 const AboutLegal = lazy(() => import('./components/AboutLegal'));
+const TermsPage = lazy(() => import('./pages/TermsPage'));
+const PrivacyPage = lazy(() => import('./pages/PrivacyPage'));
+const RefundPage = lazy(() => import('./pages/RefundPage'));
+const CookiePolicyPage = lazy(() => import('./pages/CookiePolicyPage'));
+const AccessibilityPage = lazy(() => import('./pages/AccessibilityPage'));
+const ContactPage = lazy(() => import('./pages/ContactPage'));
+const PricingPage = lazy(() => import('./pages/PricingPage'));
 
 function PageFallback() {
   return <div className="py-16 text-center text-sm text-content-tertiary">Loading…</div>;
@@ -39,7 +48,7 @@ const PAGE_TITLES: Record<AppView, string> = {
   settings: 'Settings',
   progress: 'Progress',
   login: 'Log in',
-  about: 'About & legal',
+  about: 'About',
   guide: 'Python guide',
   contribute: 'Contribute',
   'getting-started': 'Getting Started',
@@ -47,32 +56,80 @@ const PAGE_TITLES: Record<AppView, string> = {
   race: 'Ghost race',
   'race-run': 'Ghost race',
   friends: 'Friends',
+  pricing: 'Pricing',
+  terms: 'Terms of Service',
+  privacy: 'Privacy Policy',
+  refund: 'Refund Policy',
+  cookies: 'Cookie Policy',
+  accessibility: 'Accessibility',
+  contact: 'Contact',
 };
 
-/**
- * Top-level shell. Routing is a small view state machine (no router library).
- * Guest-usable by default; the login view is optional. Adds Monkeytype-isms:
- * a command line (Ctrl/⌘+K), a tips/credits footer, and a zen fade while typing.
- */
 function AppShell() {
   const { settings, update } = useSettings();
   const { isGuest, logout } = useSession();
-  const [view, setView] = useState<AppView>('home');
+  const { canStartExercise, startCheckout, me, checkoutBusy, checkoutError, isPro } = useEntitlement();
+  const [view, setViewState] = useState<AppView>(() => {
+    try {
+      const stored = sessionStorage.getItem('pytyping:spa-path');
+      if (stored) {
+        sessionStorage.removeItem('pytyping:spa-path');
+        const url = new URL(stored, window.location.origin);
+        window.history.replaceState({ view: viewFromPath(url.pathname) }, '', stored);
+        return viewFromPath(url.pathname);
+      }
+    } catch {
+      /* private mode */
+    }
+    return viewFromPath(window.location.pathname);
+  });
   const [activeId, setActiveId] = useState<string | null>(null);
   const [raceGhost, setRaceGhost] = useState<{ exerciseId: string; source: GhostSource } | null>(null);
   const [chromeHidden, setChromeHidden] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [upgradeReason, setUpgradeReason] = useState<UpgradeReason | null>(null);
+  const skipFocusOnMount = useRef(true);
 
-  const startExercise = useCallback((id: string) => {
-    setActiveId(id);
-    setView('typing');
+  const setView = useCallback((next: AppView) => {
+    setViewState(next);
+    const path = pathFromView(next);
+    if (path && window.location.pathname !== path) {
+      window.history.pushState({ view: next }, '', path);
+    }
   }, []);
+
+  useEffect(() => {
+    const onPop = () => setViewState(viewFromPath(window.location.pathname));
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
+
+  useEffect(() => {
+    if (skipFocusOnMount.current) {
+      skipFocusOnMount.current = false;
+      return;
+    }
+    document.getElementById('main-content')?.focus();
+  }, [view]);
+
+  const startExercise = useCallback(
+    (id: string) => {
+      const gate = canStartExercise(id);
+      if (!gate.allowed) {
+        setUpgradeReason(gate.reason ?? 'feature');
+        return;
+      }
+      setActiveId(id);
+      setViewState('typing');
+    },
+    [canStartExercise],
+  );
   const startRace = useCallback((exerciseId: string, source: GhostSource) => {
     setActiveId(exerciseId);
     setRaceGhost({ exerciseId, source });
-    setView('race-run');
+    setViewState('race-run');
   }, []);
-  const goHome = useCallback(() => setView('home'), []);
+  const goHome = useCallback(() => setView('home'), [setView]);
 
   useEffect(() => {
     if (view !== 'typing' && view !== 'race-run') setChromeHidden(false);
@@ -96,9 +153,15 @@ function AppShell() {
   const commands = useMemo<Command[]>(() => {
     const themeCommands: Command[] = THEME_OPTIONS.filter((option) => option.id !== 'custom').map((option) => ({
       id: `theme-${option.id}`,
-      label: `Theme: ${option.label}`,
+      label: `Theme: ${option.label}${option.pro ? ' (Pro)' : ''}`,
       hint: 'theme',
-      run: () => update({ themeId: option.id }),
+      run: () => {
+        if (option.pro && !isPro) {
+          setUpgradeReason('feature');
+          return;
+        }
+        update({ themeId: option.id });
+      },
     }));
     const cmds: Command[] = [
       { id: 'nav-getting-started', label: 'Getting Started', hint: 'navigate', run: () => setView('getting-started') },
@@ -109,8 +172,11 @@ function AppShell() {
       { id: 'nav-friends', label: 'Go to Friends', hint: 'navigate', run: () => setView('friends') },
       { id: 'nav-contribute', label: 'Contribute / request a language', hint: 'navigate', run: () => setView('contribute') },
       { id: 'nav-progress', label: 'Go to Progress', hint: 'navigate', run: () => setView('progress') },
+      { id: 'nav-pricing', label: 'Go to Pricing', hint: 'navigate', run: () => setView('pricing') },
       { id: 'nav-settings', label: 'Go to Settings', hint: 'navigate', run: () => setView('settings') },
-      { id: 'nav-about', label: 'About & legal', hint: 'navigate', run: () => setView('about') },
+      { id: 'nav-about', label: 'About', hint: 'navigate', run: () => setView('about') },
+      { id: 'nav-terms', label: 'Terms of Service', hint: 'legal', run: () => setView('terms') },
+      { id: 'nav-privacy', label: 'Privacy Policy', hint: 'legal', run: () => setView('privacy') },
       { id: 'theme-custom', label: 'Theme: Custom', hint: 'theme', run: () => update({ themeId: 'custom' }) },
       {
         id: 'toggle-line',
@@ -126,17 +192,37 @@ function AppShell() {
       },
       ...themeCommands,
     ];
-    if (isGuest) {
+    if (isGuest && !me.authenticated) {
       cmds.push({ id: 'login', label: 'Log in / Sign up', hint: 'account', run: () => setView('login') });
-    } else {
-      cmds.push({ id: 'logout', label: 'Log out', hint: 'account', run: logout });
+    } else if (!isGuest) {
+      cmds.push({ id: 'logout', label: 'Log out (device)', hint: 'account', run: logout });
     }
     return cmds;
-  }, [isGuest, logout, settings.lineNumbers, settings.liveWpm, update]);
+  }, [isGuest, logout, me.authenticated, isPro, settings.lineNumbers, settings.liveWpm, update, setView]);
 
-  // The login screen is a focused, full-page view without the app chrome.
+  const handleUpgrade = useCallback(async () => {
+    if (!me.authenticated) {
+      setUpgradeReason(null);
+      setView('login');
+      return;
+    }
+    await startCheckout();
+  }, [me.authenticated, setView, startCheckout]);
+
+  useEffect(() => {
+    if (PRO_THEME_IDS.includes(settings.themeId) && !isPro) {
+      update({ themeId: 'monokia' });
+    }
+  }, [isPro, settings.themeId, update]);
+
   if (view === 'login') {
-    return <LoginScreen onDone={goHome} onGuest={goHome} onShowLegal={() => setView('about')} />;
+    return (
+      <LoginScreen
+        onDone={() => setView('home')}
+        onGuest={() => setView('home')}
+        onNavigate={setView}
+      />
+    );
   }
 
   return (
@@ -166,14 +252,35 @@ function AppShell() {
               onSelectExercise={startExercise}
               onStartRace={startRace}
               onFocusChange={setChromeHidden}
+              onUpgradeNeeded={(reason) => setUpgradeReason(reason)}
             />
           )}
           {view === 'settings' && (
-            <Settings onShowLogin={() => setView('login')} onManageFriends={() => setView('friends')} />
+            <Settings
+              onShowLogin={() => setView('login')}
+              onManageFriends={() => setView('friends')}
+              onNavigate={setView}
+              onRequestUpgrade={setUpgradeReason}
+            />
           )}
           {view === 'friends' && <Friends onShowLogin={() => setView('login')} />}
           {view === 'progress' && <ProgressTracker exercises={EXERCISES} />}
-          {view === 'about' && <AboutLegal />}
+          {view === 'about' && <AboutLegal onNavigate={setView} />}
+          {view === 'terms' && <TermsPage onNavigate={setView} />}
+          {view === 'privacy' && <PrivacyPage onNavigate={setView} />}
+          {view === 'refund' && <RefundPage onNavigate={setView} />}
+          {view === 'cookies' && <CookiePolicyPage onNavigate={setView} />}
+          {view === 'accessibility' && <AccessibilityPage onNavigate={setView} />}
+          {view === 'contact' && <ContactPage onNavigate={setView} />}
+          {view === 'pricing' && (
+            <PricingPage
+              onNavigate={setView}
+              onUpgrade={() => {
+                if (!me.authenticated) setView('login');
+                else void startCheckout();
+              }}
+            />
+          )}
           {view === 'getting-started' && <GettingStarted />}
           {view === 'leaderboard' && <Leaderboard />}
           {view === 'race' && (
@@ -191,11 +298,25 @@ function AppShell() {
         </Suspense>
       </main>
 
-      <Footer hidden={chromeHidden} onShowLegal={() => setView('about')} />
+      <Footer hidden={chromeHidden} onNavigate={setView} />
 
       <PomodoroWidget chromeHidden={chromeHidden} />
 
       <CommandPalette open={paletteOpen} commands={commands} onClose={() => setPaletteOpen(false)} />
+
+      <UpgradeModal
+        open={upgradeReason !== null}
+        reason={upgradeReason ?? 'feature'}
+        busy={checkoutBusy}
+        error={checkoutError}
+        authenticated={me.authenticated}
+        onClose={() => setUpgradeReason(null)}
+        onUpgrade={() => void handleUpgrade()}
+        onSignIn={() => {
+          setUpgradeReason(null);
+          setView('login');
+        }}
+      />
     </div>
   );
 }
@@ -207,9 +328,11 @@ export default function App() {
     <ErrorBoundary>
       <SettingsProvider>
         <SessionProvider>
-          <PomodoroProvider>
-            <AppShell />
-          </PomodoroProvider>
+          <EntitlementProvider>
+            <PomodoroProvider>
+              <AppShell />
+            </PomodoroProvider>
+          </EntitlementProvider>
         </SessionProvider>
       </SettingsProvider>
     </ErrorBoundary>

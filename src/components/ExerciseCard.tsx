@@ -4,6 +4,7 @@ import type { Difficulty, Exercise } from '../types/exercise';
 interface ExerciseCardProps {
   exercise: Exercise;
   completed: boolean;
+  locked?: boolean;
   onSelect: (id: string) => void;
 }
 
@@ -20,24 +21,32 @@ const DIFFICULTY_CONFIG: Record<Difficulty, { color: string; dot: string }> = {
     color: 'text-error bg-error/8',
     dot: 'bg-error',
   },
+  interview: {
+    color: 'text-accent bg-[var(--color-accent-subtle)]',
+    dot: 'bg-accent',
+  },
 };
 
-function ExerciseCard({ exercise, completed, onSelect }: ExerciseCardProps) {
+function ExerciseCard({ exercise, completed, locked = false, onSelect }: ExerciseCardProps) {
   const diff = DIFFICULTY_CONFIG[exercise.difficulty];
 
   return (
     <button
       type="button"
       onClick={() => onSelect(exercise.id)}
-      aria-label={`Start exercise: ${exercise.title}`}
-      className="group flex h-full flex-col rounded-lg border border-border-tertiary bg-background-secondary p-5 text-left transition-all duration-150 hover:border-border-secondary hover:bg-background-tertiary hover:shadow-[var(--shadow-sm)]"
+      aria-label={
+        locked
+          ? `Pro interview exercise, locked: ${exercise.title}`
+          : `Start exercise: ${exercise.title}`
+      }
+      className="group flex h-full min-h-[11rem] flex-col rounded-lg border border-border-tertiary bg-background-secondary p-5 text-left transition-all duration-150 hover:border-border-secondary hover:bg-background-tertiary hover:shadow-[var(--shadow-sm)]"
     >
       {/* Header row */}
       <div className="flex items-start justify-between gap-3">
         <h3 className="text-sm font-semibold leading-snug text-content-primary group-hover:text-accent transition-colors duration-150">
           {exercise.title}
         </h3>
-        {completed && (
+        {completed && !locked && (
           <span
             className="mt-0.5 shrink-0 flex h-4 w-4 items-center justify-center rounded-full bg-success/15 text-success"
             aria-label="Completed"
@@ -61,6 +70,9 @@ function ExerciseCard({ exercise, completed, onSelect }: ExerciseCardProps) {
           <span className={`h-1.5 w-1.5 rounded-full ${diff.dot}`} aria-hidden="true" />
           {exercise.difficulty}
         </span>
+        {locked && (
+          <span className="rounded-md border border-accent/40 px-2 py-0.5 font-medium text-accent">Pro</span>
+        )}
         {exercise.topics.slice(0, 3).map((topic) => (
           <span
             key={topic}

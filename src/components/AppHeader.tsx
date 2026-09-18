@@ -2,21 +2,9 @@ import { useRef, useState } from 'react';
 import AccountMenu from './AccountMenu';
 import DisclosurePanel from './DisclosurePanel';
 import Logo from './Logo';
+import type { AppView } from '../lib/routes';
 
-export type AppView =
-  | 'home'
-  | 'typing'
-  | 'race'
-  | 'race-run'
-  | 'settings'
-  | 'progress'
-  | 'login'
-  | 'about'
-  | 'guide'
-  | 'contribute'
-  | 'getting-started'
-  | 'leaderboard'
-  | 'friends';
+export type { AppView };
 
 interface NavItem {
   id: AppView;
@@ -29,6 +17,7 @@ const PRIMARY_NAV: NavItem[] = [
   { id: 'leaderboard', label: 'Leaderboard' },
   { id: 'race', label: 'Race' },
   { id: 'progress', label: 'Progress' },
+  { id: 'pricing', label: 'Pricing' },
   { id: 'settings', label: 'Settings' },
   { id: 'contribute', label: 'Contribute' },
 ];

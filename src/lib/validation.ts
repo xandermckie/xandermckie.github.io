@@ -89,7 +89,7 @@ export function isHttpsUrl(v: unknown): v is string {
   return !lower.includes('javascript:') && !lower.startsWith('data:');
 }
 
-const DIFFICULTIES = ['beginner', 'intermediate', 'advanced'] as const;
+const DIFFICULTIES = ['beginner', 'intermediate', 'advanced', 'interview'] as const;
 function isDifficulty(v: unknown): v is Difficulty {
   return isString(v) && (DIFFICULTIES as readonly string[]).includes(v);
 }

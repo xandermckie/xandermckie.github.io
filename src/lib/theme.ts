@@ -20,7 +20,12 @@ export type ThemePresetId =
   | 'forest'
   | 'rose-dawn'
   | 'oceanic'
-  | 'midnight-purple';
+  | 'midnight-purple'
+  | 'hc-light'
+  | 'hc-dark'
+  | 'ember'
+  | 'paper'
+  | 'terminal';
 
 export type ThemeId = ThemePresetId | 'custom';
 
@@ -320,9 +325,96 @@ export const PRESETS: Record<ThemePresetId, Palette> = {
     '--color-border-tertiary': 'rgba(255, 255, 255, 0.11)',
     ...SYNTAX_DARK,
   },
+  'hc-light': {
+    '--color-background-primary': '#ffffff',
+    '--color-background-secondary': '#f3f3f3',
+    '--color-background-tertiary': '#e7e7e7',
+    '--color-text-primary': '#000000',
+    '--color-text-secondary': '#1a1a1a',
+    '--color-text-tertiary': '#2e2e2e',
+    '--color-accent': '#0050c8',
+    '--color-error': '#9f0000',
+    '--color-success': '#166534',
+    '--color-warning': '#854d0e',
+    '--color-border-primary': 'rgba(0, 0, 0, 0.72)',
+    '--color-border-secondary': 'rgba(0, 0, 0, 0.45)',
+    '--color-border-tertiary': 'rgba(0, 0, 0, 0.28)',
+    ...SYNTAX_LIGHT,
+  },
+  'hc-dark': {
+    '--color-background-primary': '#000000',
+    '--color-background-secondary': '#161616',
+    '--color-background-tertiary': '#242424',
+    '--color-text-primary': '#ffffff',
+    '--color-text-secondary': '#f2f2f2',
+    '--color-text-tertiary': '#d6d6d6',
+    '--color-accent': '#7eb6ff',
+    '--color-error': '#ff6b6b',
+    '--color-success': '#86efac',
+    '--color-warning': '#fde047',
+    '--color-border-primary': 'rgba(255, 255, 255, 0.7)',
+    '--color-border-secondary': 'rgba(255, 255, 255, 0.45)',
+    '--color-border-tertiary': 'rgba(255, 255, 255, 0.28)',
+    ...SYNTAX_DARK,
+  },
+  ember: {
+    '--color-background-primary': '#1a100c',
+    '--color-background-secondary': '#271910',
+    '--color-background-tertiary': '#342117',
+    '--color-text-primary': '#f8efe6',
+    '--color-text-secondary': '#d7b79a',
+    '--color-text-tertiary': '#a8876c',
+    '--color-accent': '#f08c4a',
+    '--color-error': '#f07167',
+    '--color-success': '#9ccc65',
+    '--color-warning': '#f0c05a',
+    '--color-border-primary': 'rgba(255, 255, 255, 0.32)',
+    '--color-border-secondary': 'rgba(255, 255, 255, 0.18)',
+    '--color-border-tertiary': 'rgba(255, 255, 255, 0.1)',
+    ...SYNTAX_DARK,
+  },
+  paper: {
+    '--color-background-primary': '#f6f1e4',
+    '--color-background-secondary': '#ece4d0',
+    '--color-background-tertiary': '#e0d4b8',
+    '--color-text-primary': '#2a2418',
+    '--color-text-secondary': '#5c5344',
+    '--color-text-tertiary': '#857966',
+    '--color-accent': '#0f6b5c',
+    '--color-error': '#b42318',
+    '--color-success': '#3f7d20',
+    '--color-warning': '#a16207',
+    '--color-border-primary': 'rgba(0, 0, 0, 0.38)',
+    '--color-border-secondary': 'rgba(0, 0, 0, 0.22)',
+    '--color-border-tertiary': 'rgba(0, 0, 0, 0.12)',
+    ...SYNTAX_LIGHT,
+  },
+  terminal: {
+    '--color-background-primary': '#03140b',
+    '--color-background-secondary': '#0a1f14',
+    '--color-background-tertiary': '#12291c',
+    '--color-text-primary': '#d7ffe6',
+    '--color-text-secondary': '#8fd9ab',
+    '--color-text-tertiary': '#5fa67d',
+    '--color-accent': '#3ddc84',
+    '--color-error': '#ff7a7a',
+    '--color-success': '#7dff9a',
+    '--color-warning': '#e6d36a',
+    '--color-border-primary': 'rgba(61, 220, 132, 0.45)',
+    '--color-border-secondary': 'rgba(61, 220, 132, 0.25)',
+    '--color-border-tertiary': 'rgba(61, 220, 132, 0.12)',
+    ...SYNTAX_DARK,
+  },
 };
 
-export const THEME_OPTIONS: Array<{ id: ThemeId; label: string }> = [
+export interface ThemeOption {
+  id: ThemeId;
+  label: string;
+  /** Exclusive aesthetic palettes; high-contrast presets stay free for accessibility. */
+  pro?: boolean;
+}
+
+export const THEME_OPTIONS: ThemeOption[] = [
   { id: 'light', label: 'Light' },
   { id: 'monokia', label: 'Monokia' },
   { id: 'dracula', label: 'Dracula' },
@@ -336,8 +428,15 @@ export const THEME_OPTIONS: Array<{ id: ThemeId; label: string }> = [
   { id: 'rose-dawn', label: 'Rose Dawn' },
   { id: 'oceanic', label: 'Oceanic' },
   { id: 'midnight-purple', label: 'Midnight Purple' },
+  { id: 'hc-light', label: 'High Contrast Light' },
+  { id: 'hc-dark', label: 'High Contrast Dark' },
+  { id: 'ember', label: 'Ember', pro: true },
+  { id: 'paper', label: 'Paper', pro: true },
+  { id: 'terminal', label: 'Terminal', pro: true },
   { id: 'custom', label: 'Custom' },
 ];
+
+export const PRO_THEME_IDS: ThemeId[] = THEME_OPTIONS.filter((option) => option.pro).map((option) => option.id);
 
 export const THEME_IDS: ThemeId[] = THEME_OPTIONS.map((option) => option.id);
 

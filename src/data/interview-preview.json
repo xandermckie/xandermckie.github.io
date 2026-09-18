@@ -1,0 +1,130 @@
+[
+  {
+    "id": "iv-freq-top-001",
+    "title": "Top Tokens by Frequency",
+    "description": "Count word frequencies and return the k most common tokens without importing Counter.",
+    "topics": ["hash maps", "sorting", "strings"],
+    "estimatedTime": 4,
+    "locked": true
+  },
+  {
+    "id": "iv-two-ptr-001",
+    "title": "Pair Sum in a Sorted List",
+    "description": "Find two indices whose values add to a target in a sorted list using two pointers.",
+    "topics": ["two pointers", "arrays"],
+    "estimatedTime": 4,
+    "locked": true
+  },
+  {
+    "id": "iv-stack-001",
+    "title": "Balanced Delimiters",
+    "description": "Check that brackets, braces, and parentheses nest correctly using a stack.",
+    "topics": ["stacks", "strings"],
+    "estimatedTime": 4,
+    "locked": true
+  },
+  {
+    "id": "iv-bsearch-001",
+    "title": "Binary Search Index",
+    "description": "Return the index of a target in a sorted list, or -1, using binary search.",
+    "topics": ["binary search", "arrays"],
+    "estimatedTime": 4,
+    "locked": true
+  },
+  {
+    "id": "iv-window-sum-001",
+    "title": "Maximum Window Sum",
+    "description": "Find the maximum sum of any contiguous window of length k.",
+    "topics": ["sliding window", "arrays"],
+    "estimatedTime": 4,
+    "locked": true
+  },
+  {
+    "id": "iv-kadane-001",
+    "title": "Best Subarray Sum",
+    "description": "Find the maximum sum of any contiguous subarray (Kadane’s algorithm).",
+    "topics": ["dynamic programming", "arrays"],
+    "estimatedTime": 4,
+    "locked": true
+  },
+  {
+    "id": "iv-merge-001",
+    "title": "Merge Overlapping Ranges",
+    "description": "Merge overlapping [start, end] intervals after sorting by start.",
+    "topics": ["intervals", "sorting"],
+    "estimatedTime": 5,
+    "locked": true
+  },
+  {
+    "id": "iv-lru-001",
+    "title": "Tiny LRU Cache",
+    "description": "Implement get/put with insertion-ordered dict as a least-recently-used cache.",
+    "topics": ["caches", "dicts"],
+    "estimatedTime": 5,
+    "locked": true
+  },
+  {
+    "id": "iv-dfs-001",
+    "title": "Connected Groups",
+    "description": "Count connected groups in an undirected graph with depth-first search.",
+    "topics": ["graphs", "dfs"],
+    "estimatedTime": 5,
+    "locked": true
+  },
+  {
+    "id": "iv-bfs-001",
+    "title": "Shortest Hops",
+    "description": "Find the fewest hops between two nodes in an unweighted graph using BFS.",
+    "topics": ["graphs", "bfs"],
+    "estimatedTime": 5,
+    "locked": true
+  },
+  {
+    "id": "iv-heap-001",
+    "title": "Streaming Top Scores",
+    "description": "Track the k highest scores in a stream with a min-heap.",
+    "topics": ["heaps", "streaming"],
+    "estimatedTime": 4,
+    "locked": true
+  },
+  {
+    "id": "iv-gen-001",
+    "title": "Lazy Pipeline",
+    "description": "Chain generators to filter and transform a stream without building extra lists.",
+    "topics": ["generators", "iteration"],
+    "estimatedTime": 4,
+    "locked": true
+  },
+  {
+    "id": "iv-deco-001",
+    "title": "Timing Decorator",
+    "description": "Write a decorator that records how long a function ran using a closure.",
+    "topics": ["decorators", "closures"],
+    "estimatedTime": 4,
+    "locked": true
+  },
+  {
+    "id": "iv-ctx-001",
+    "title": "Context Manager",
+    "description": "Implement a context manager that tracks whether a block succeeded.",
+    "topics": ["context managers", "exceptions"],
+    "estimatedTime": 4,
+    "locked": true
+  },
+  {
+    "id": "iv-topo-001",
+    "title": "Task Order",
+    "description": "Produce a valid order of tasks given prerequisites using Kahn’s algorithm.",
+    "topics": ["graphs", "topological sort"],
+    "estimatedTime": 5,
+    "locked": true
+  },
+  {
+    "id": "iv-union-001",
+    "title": "Disjoint Sets",
+    "description": "Union-find with path compression to test whether two people share a group.",
+    "topics": ["union-find", "graphs"],
+    "estimatedTime": 5,
+    "locked": true
+  }
+]

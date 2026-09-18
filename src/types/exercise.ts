@@ -3,7 +3,7 @@
  * shape every entry in data/exercises.json must satisfy.
  */
 
-export type Difficulty = 'beginner' | 'intermediate' | 'advanced';
+export type Difficulty = 'beginner' | 'intermediate' | 'advanced' | 'interview';
 
 export interface KeyTerm {
   term: string;

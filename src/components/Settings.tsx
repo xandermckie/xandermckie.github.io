@@ -1,20 +1,43 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { ChangeEvent, ReactNode } from 'react';
 import Avatar from './Avatar';
 import ProfilePhotoCropModal from './ProfilePhotoCropModal';
+import DeleteAccountModal from './DeleteAccountModal';
 import { useSettings } from '../context/SettingsContext';
 import { CODE_FONTS, UI_FONTS } from '../lib/settings';
 import { useSession } from '../context/SessionContext';
-import { exportBackup, importBackup, BACKUP_MAX_BYTES } from '../lib/backup';
+import { useEntitlement } from '../context/EntitlementContext';
+import { exportBackup, importBackup, BACKUP_MAX_BYTES, clearAllData } from '../lib/backup';
 import { loadImageFileForCrop } from '../lib/profile-photo';
 import { THEME_OPTIONS } from '../lib/theme';
 import type { BaseColors } from '../lib/theme';
+import { contrastRatio, formatContrast, meetsContrastAa } from '../lib/contrast';
+import {
+  createPlaylist,
+  deletePlaylist,
+  loadPlaylists,
+  savePlaylists,
+  validatePlaylists,
+  type Playlist,
+} from '../lib/playlists';
+import {
+  deleteCloudAccount,
+  exportCloudAccount,
+  pullCloudSync,
+  pushCloudSync,
+  signOutCloud,
+  updateCloudProfile,
+} from '../lib/api';
+import { PRO_PRICE_LABEL, PRO_INTERVAL_LABEL } from '../lib/legal';
+import { validateSettings } from '../lib/settings';
+import type { AppView } from '../lib/routes';
+import type { UpgradeReason } from '../context/EntitlementContext';
 
 interface SettingsProps {
-  /** Open the login screen (shown to guests). */
   onShowLogin: () => void;
-  /** Open the Friends page. */
   onManageFriends?: () => void;
+  onNavigate: (view: AppView) => void;
+  onRequestUpgrade: (reason: UpgradeReason) => void;
 }
 
 const COLOR_FIELDS: Array<{ key: keyof BaseColors; label: string }> = [
@@ -76,10 +99,12 @@ interface CropSession {
   imgHeight: number;
 }
 
-export default function Settings({ onShowLogin, onManageFriends }: SettingsProps) {
+export default function Settings({ onShowLogin, onManageFriends, onNavigate, onRequestUpgrade }: SettingsProps) {
   const { settings, update, reset, persistError } = useSettings();
   const { isGuest, account, displayName, avatarColor, avatarPhoto, setAvatarPhoto, logout, removeAccount } =
     useSession();
+  const { me, isPro, remainingToday, startCheckout, openPortal, checkoutBusy, checkoutError, refresh, apiAvailable } =
+    useEntitlement();
 
   const fileRef = useRef<HTMLInputElement>(null);
   const photoRef = useRef<HTMLInputElement>(null);
@@ -87,6 +112,21 @@ export default function Settings({ onShowLogin, onManageFriends }: SettingsProps
   const [exportError, setExportError] = useState<string | null>(null);
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [cropSession, setCropSession] = useState<CropSession | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [playlists, setPlaylists] = useState<Playlist[]>(() => loadPlaylists());
+  const [playlistName, setPlaylistName] = useState('');
+  const [cloudName, setCloudName] = useState('');
+  const [cloudBio, setCloudBio] = useState('');
+  const [cloudNotice, setCloudNotice] = useState<string | null>(null);
+  const [cloudError, setCloudError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setCloudName(me.displayName ?? '');
+    setCloudBio(me.bio ?? '');
+  }, [me.displayName, me.bio]);
+
+  const textContrast = contrastRatio(settings.customColors.textPrimary, settings.customColors.background);
+  const contrastOk = meetsContrastAa(settings.customColors.textPrimary, settings.customColors.background);
 
   const closeCrop = () => {
     if (cropSession) URL.revokeObjectURL(cropSession.objectUrl);
@@ -162,6 +202,62 @@ export default function Settings({ onShowLogin, onManageFriends }: SettingsProps
     }
   };
 
+  const handleDelete = async () => {
+    if (me.authenticated) {
+      await deleteCloudAccount();
+    }
+    if (account) removeAccount(account.id);
+    else clearAllData();
+    window.location.assign('/');
+  };
+
+  const downloadCloudExport = async () => {
+    setExportError(null);
+    try {
+      const payload = await exportCloudAccount();
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `pytyping-cloud-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setExportError(err instanceof Error ? err.message : 'Could not export cloud data.');
+    }
+  };
+
+  const syncUp = async () => {
+    setCloudError(null);
+    setCloudNotice(null);
+    try {
+      await pushCloudSync({ settings, playlists, displayName: cloudName, bio: cloudBio });
+      setCloudNotice('Saved to the cloud.');
+    } catch (err) {
+      setCloudError(err instanceof Error ? err.message : 'Cloud sync failed.');
+    }
+  };
+
+  const syncDown = async () => {
+    setCloudError(null);
+    setCloudNotice(null);
+    try {
+      const payload = await pullCloudSync();
+      if (payload.settings) update(validateSettings(payload.settings));
+      if (Array.isArray(payload.playlists)) {
+        savePlaylists(validatePlaylists(payload.playlists));
+        setPlaylists(loadPlaylists());
+      }
+      if (payload.displayName) setCloudName(payload.displayName);
+      if (payload.bio) setCloudBio(payload.bio);
+      setCloudNotice('Restored from the cloud.');
+    } catch (err) {
+      setCloudError(err instanceof Error ? err.message : 'Cloud restore failed.');
+    }
+  };
+
   return (
     <div className="mx-auto w-full max-w-2xl pb-12">
       <h1 className="mb-8 text-lg font-medium text-content-primary">Settings</h1>
@@ -171,57 +267,113 @@ export default function Settings({ onShowLogin, onManageFriends }: SettingsProps
       {/* Account */}
       <section className="mb-8">
         <SectionTitle>Account</SectionTitle>
-        {isGuest ? (
-          <div className="rounded-lg border border-border-tertiary bg-background-secondary p-4">
-            <p className="text-sm text-content-primary">You&apos;re playing as a guest.</p>
-            <p className="mt-1 text-sm text-content-secondary">
-              Guest progress is saved only for this browser session. Log in or create an account to
-              save it on this device permanently.
+        <div className="rounded-lg border border-border-tertiary bg-background-secondary p-4">
+          {me.authenticated ? (
+            <p className="text-sm text-content-primary">
+              Cloud: <span className="font-medium">{me.email}</span>{' '}
+              <span className="text-content-tertiary">({isPro ? 'Pro' : 'Free'})</span>
             </p>
-            <button
-              type="button"
-              onClick={onShowLogin}
-              className="mt-4 rounded-md border border-accent px-4 py-2 text-sm font-medium text-accent hover:bg-background-tertiary"
-            >
-              Log in or create account
-            </button>
-          </div>
-        ) : (
-          <div className="rounded-lg border border-border-tertiary bg-background-secondary p-4">
-            <div className="flex items-center gap-3">
+          ) : (
+            <p className="text-sm text-content-secondary">
+              No cloud account on this browser. Cloud sign-in is required for Pro and the daily completion cap.
+            </p>
+          )}
+          {isGuest ? (
+            <p className="mt-2 text-sm text-content-secondary">Device profile: guest (session only).</p>
+          ) : (
+            <div className="mt-3 flex items-center gap-3">
               <Avatar name={displayName} color={avatarColor} photoUrl={avatarPhoto} size="md" />
-              <div>
-                <p className="text-sm text-content-primary">
-                  Signed in as <span className="font-medium">{displayName}</span>
-                </p>
-                <p className="mt-1 text-xs text-content-tertiary">
-                  Stored locally on this device. No cloud sync. Use Export backup to move between devices.
-                </p>
-              </div>
+              <p className="text-sm text-content-primary">
+                Device profile: <span className="font-medium">{displayName}</span>
+              </p>
             </div>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <button type="button" onClick={logout} className={btnClass}>
-                Log out
+          )}
+          <div className="mt-4 flex flex-wrap gap-2">
+            {!me.authenticated && (
+              <button type="button" onClick={onShowLogin} className="min-h-11 rounded-md border border-accent px-4 py-2 text-sm font-medium text-accent hover:bg-background-tertiary">
+                Cloud sign-in
               </button>
-              {onManageFriends && (
-                <button type="button" onClick={onManageFriends} className={btnClass}>
-                  Manage friends
-                </button>
-              )}
+            )}
+            {me.authenticated && (
               <button
                 type="button"
-                onClick={() => {
-                  if (account && window.confirm('Delete this account and all of its saved progress on this device?')) {
-                    removeAccount(account.id);
-                  }
-                }}
-                className="rounded-md border border-error px-4 py-2 text-sm text-error transition-colors hover:bg-background-tertiary"
+                onClick={() => void signOutCloud().then(() => refresh())}
+                className={`min-h-11 ${btnClass}`}
               >
-                Delete account
+                Sign out of cloud
               </button>
-            </div>
+            )}
+            {isGuest ? (
+              <button type="button" onClick={onShowLogin} className={btnClass}>
+                Device account
+              </button>
+            ) : (
+              <button type="button" onClick={logout} className={`min-h-11 ${btnClass}`}>
+                Log out of device
+              </button>
+            )}
+            {onManageFriends && (
+              <button type="button" onClick={onManageFriends} className={`min-h-11 ${btnClass}`}>
+                Manage friends
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setDeleteOpen(true)}
+              className="min-h-11 rounded-md border border-error px-4 py-2 text-sm text-error transition-colors hover:bg-background-tertiary"
+            >
+              Delete account data
+            </button>
           </div>
-        )}
+        </div>
+      </section>
+
+      <section className="mb-8">
+        <SectionTitle>Billing</SectionTitle>
+        <div className="rounded-lg border border-border-tertiary bg-background-secondary p-4 text-sm text-content-secondary">
+          <p>
+            PyTyping Pro is {PRO_PRICE_LABEL} per {PRO_INTERVAL_LABEL} and auto-renews until you cancel. Polar is the
+            merchant of record.{' '}
+            <button type="button" className="text-accent underline-offset-2 hover:underline" onClick={() => onNavigate('refund')}>
+              Refund policy
+            </button>
+            .
+          </p>
+          <p className="mt-2 text-content-primary">
+            Plan: {isPro ? 'Pro' : 'Free'} · Completions left today: {isPro ? 'unlimited' : remainingToday}
+          </p>
+          {me.currentPeriodEnd && (
+            <p className="mt-1 text-xs text-content-tertiary">Current period ends {me.currentPeriodEnd.slice(0, 10)}.</p>
+          )}
+          <div className="mt-4 flex flex-wrap gap-2">
+            {!isPro && (
+              <button
+                type="button"
+                disabled={checkoutBusy}
+                onClick={() => (me.authenticated ? void startCheckout() : onShowLogin())}
+                className="min-h-11 rounded-md border border-accent px-4 py-2 text-sm font-medium text-accent hover:bg-background-tertiary disabled:opacity-60"
+              >
+                {me.authenticated ? `Upgrade — ${PRO_PRICE_LABEL}/${PRO_INTERVAL_LABEL}` : 'Sign in to upgrade'}
+              </button>
+            )}
+            {isPro && (
+              <button
+                type="button"
+                disabled={checkoutBusy}
+                onClick={() => void openPortal()}
+                className={`min-h-11 ${btnClass}`}
+              >
+                Manage billing
+              </button>
+            )}
+          </div>
+          {checkoutError && <p role="alert" className="mt-3 text-sm text-error">{checkoutError}</p>}
+          {!apiAvailable && (
+            <p className="mt-3 text-xs text-content-tertiary">
+              Billing API is offline in this environment. Deploy the Cloudflare Worker to take payments.
+            </p>
+          )}
+        </div>
       </section>
 
       {!isGuest && (
@@ -265,6 +417,94 @@ export default function Settings({ onShowLogin, onManageFriends }: SettingsProps
         </section>
       )}
 
+      {me.authenticated && isPro && (
+        <section className="mb-8">
+          <SectionTitle>Pro profile</SectionTitle>
+          <div className="flex flex-col gap-3 rounded-lg border border-border-tertiary bg-background-secondary p-4">
+            <label className="flex flex-col gap-1 text-xs text-content-secondary">
+              Display name
+              <input
+                className="min-h-11 rounded-md border border-border-tertiary bg-background-primary px-3 py-2 text-sm text-content-primary"
+                value={cloudName}
+                onChange={(e) => setCloudName(e.target.value)}
+                maxLength={40}
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-xs text-content-secondary">
+              Bio
+              <textarea
+                className="min-h-20 rounded-md border border-border-tertiary bg-background-primary px-3 py-2 text-sm text-content-primary"
+                value={cloudBio}
+                onChange={(e) => setCloudBio(e.target.value)}
+                maxLength={160}
+              />
+            </label>
+            <button
+              type="button"
+              onClick={() => {
+                void updateCloudProfile({ displayName: cloudName, bio: cloudBio })
+                  .then(() => refresh())
+                  .catch((err: unknown) => setCloudError(err instanceof Error ? err.message : 'Could not save profile.'));
+              }}
+              className={`min-h-11 self-start ${btnClass}`}
+            >
+              Save profile
+            </button>
+          </div>
+        </section>
+      )}
+
+      {isPro && (
+        <section className="mb-8">
+          <SectionTitle>Practice playlists</SectionTitle>
+          <form
+            className="mb-3 flex flex-wrap gap-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const created = createPlaylist(playlistName);
+              if (created) {
+                setPlaylists(loadPlaylists());
+                setPlaylistName('');
+              }
+            }}
+          >
+            <label className="sr-only" htmlFor="playlist-name">
+              New playlist name
+            </label>
+            <input
+              id="playlist-name"
+              value={playlistName}
+              onChange={(e) => setPlaylistName(e.target.value)}
+              placeholder="New playlist"
+              className="min-h-11 rounded-md border border-border-tertiary bg-background-secondary px-3 py-2 text-sm text-content-primary"
+            />
+            <button type="submit" className={`min-h-11 ${btnClass}`}>
+              Add
+            </button>
+          </form>
+          <ul className="flex flex-col gap-2">
+            {playlists.map((playlist) => (
+              <li key={playlist.id} className="flex items-center justify-between gap-3 rounded-md border border-border-tertiary px-3 py-2 text-sm">
+                <span className="text-content-primary">
+                  {playlist.name}{' '}
+                  <span className="text-content-tertiary">({playlist.exerciseIds.length})</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    deletePlaylist(playlist.id);
+                    setPlaylists(loadPlaylists());
+                  }}
+                  className="min-h-11 text-error"
+                >
+                  Remove
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       {cropSession && (
         <ProfilePhotoCropModal
           open
@@ -285,33 +525,49 @@ export default function Settings({ onShowLogin, onManageFriends }: SettingsProps
               key={t.id}
               type="button"
               aria-pressed={settings.themeId === t.id}
-              onClick={() => update({ themeId: t.id })}
-              className={`rounded-md border px-4 py-2 text-sm transition-colors ${
+              onClick={() => {
+                if (t.pro && !isPro) {
+                  onRequestUpgrade('feature');
+                  return;
+                }
+                update({ themeId: t.id });
+              }}
+              aria-disabled={Boolean(t.pro && !isPro)}
+              className={`min-h-11 rounded-md border px-4 py-2 text-sm transition-colors ${
                 settings.themeId === t.id
                   ? 'border-accent text-accent'
                   : 'border-border-tertiary text-content-secondary hover:bg-background-secondary'
-              }`}
+              } ${t.pro && !isPro ? 'opacity-60' : ''}`}
             >
               {t.label}
+              {t.pro ? ' · Pro' : ''}
             </button>
           ))}
         </div>
 
         {settings.themeId === 'custom' && (
-          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {COLOR_FIELDS.map((f) => (
-              <label key={f.key} className="flex flex-col gap-1 text-xs text-content-secondary">
-                {f.label}
-                <input
-                  type="color"
-                  value={settings.customColors[f.key]}
-                  onChange={(e) => setColor(f.key, e.target.value)}
-                  className="h-9 w-full cursor-pointer rounded-md border border-border-tertiary bg-background-secondary"
-                  aria-label={`${f.label} color`}
-                />
-              </label>
-            ))}
-          </div>
+          <>
+            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {COLOR_FIELDS.map((f) => (
+                <label key={f.key} className="flex flex-col gap-1 text-xs text-content-secondary">
+                  {f.label}
+                  <input
+                    type="color"
+                    value={settings.customColors[f.key]}
+                    onChange={(e) => setColor(f.key, e.target.value)}
+                    className="h-9 w-full cursor-pointer rounded-md border border-border-tertiary bg-background-secondary"
+                    aria-label={`${f.label} color`}
+                  />
+                </label>
+              ))}
+            </div>
+            {!contrastOk && (
+              <p role="status" className="mt-3 text-sm text-warning">
+                Primary text contrast is {formatContrast(textContrast)} (WCAG AA needs 4.5:1). High Contrast Light/Dark
+                presets stay free.
+              </p>
+            )}
+          </>
         )}
 
         <div
@@ -444,19 +700,43 @@ export default function Settings({ onShowLogin, onManageFriends }: SettingsProps
       </section>
 
       {/* Data */}
-      <section>
+      <section className="mt-8">
         <SectionTitle>Data</SectionTitle>
         <p className="mb-4 text-xs text-content-tertiary">
-          Back up all accounts, progress, and settings to a JSON file, or restore from one. This is
-          how you move data between devices (there is no server).
+          Export a device backup, or export cloud records (GDPR/CCPA portability). Deleting an account is in the Account
+          section.
         </p>
         <div className="flex flex-wrap gap-2">
-          <button type="button" onClick={downloadBackup} className={btnClass}>
-            Export backup
+          <button type="button" onClick={downloadBackup} className={`min-h-11 ${btnClass}`}>
+            Export device backup
           </button>
-          <button type="button" onClick={() => fileRef.current?.click()} className={btnClass}>
+          <button type="button" onClick={() => fileRef.current?.click()} className={`min-h-11 ${btnClass}`}>
             Import backup…
           </button>
+          {me.authenticated && (
+            <button type="button" onClick={() => void downloadCloudExport()} className={`min-h-11 ${btnClass}`}>
+              Export cloud data
+            </button>
+          )}
+          {me.authenticated && !isPro && (
+            <button
+              type="button"
+              onClick={() => onRequestUpgrade('feature')}
+              className="min-h-11 rounded-md border border-accent px-4 py-2 text-sm font-medium text-accent hover:bg-background-tertiary"
+            >
+              Unlock cloud sync with Pro
+            </button>
+          )}
+          {isPro && (
+            <>
+              <button type="button" onClick={() => void syncUp()} className={`min-h-11 ${btnClass}`}>
+                Sync to cloud
+              </button>
+              <button type="button" onClick={() => void syncDown()} className={`min-h-11 ${btnClass}`}>
+                Restore from cloud
+              </button>
+            </>
+          )}
           <input
             ref={fileRef}
             type="file"
@@ -466,9 +746,13 @@ export default function Settings({ onShowLogin, onManageFriends }: SettingsProps
             aria-hidden="true"
           />
         </div>
+        {cloudNotice && <p role="status" className="mt-3 text-sm text-success">{cloudNotice}</p>}
+        {cloudError && <p role="alert" className="mt-3 text-sm text-error">{cloudError}</p>}
         {importError && <p className="mt-3 text-sm text-error">{importError}</p>}
         {exportError && <p className="mt-3 text-sm text-error">{exportError}</p>}
       </section>
+
+      <DeleteAccountModal open={deleteOpen} onClose={() => setDeleteOpen(false)} onDelete={handleDelete} />
     </div>
   );
 }

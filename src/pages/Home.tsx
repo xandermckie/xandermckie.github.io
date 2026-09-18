@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react';
 import ExerciseCard from '../components/ExerciseCard';
 import Logo from '../components/Logo';
-import type { AppView } from '../components/AppHeader';
-import { EXERCISES, DIFFICULTIES, allTopics } from '../lib/exercises';
+import type { AppView } from '../lib/routes';
+import { EXERCISES, DIFFICULTIES } from '../lib/exercises';
 import { getHistory, getProgress } from '../lib/progress';
 import { useSession } from '../context/SessionContext';
-import type { Difficulty } from '../types/exercise';
+import { useEntitlement } from '../context/EntitlementContext';
+import type { Difficulty, Exercise } from '../types/exercise';
 import { getAchievements, getGoalSummary, getReviewQueue, getStreakSummary } from '../lib/learning';
 
 interface HomeProps {
@@ -15,17 +16,42 @@ interface HomeProps {
 
 type DifficultyFilter = Difficulty | 'all';
 
+function allTopicsFrom(list: Exercise[]): string[] {
+  const set = new Set<string>();
+  for (const ex of list) for (const t of ex.topics) set.add(t);
+  return [...set].sort();
+}
+
 export default function Home({ onSelectExercise, onNavigate }: HomeProps) {
   const [difficulty, setDifficulty] = useState<DifficultyFilter>('all');
   const [topic, setTopic] = useState<string>('all');
   const [query, setQuery] = useState('');
   const { scopeId, progressVersion } = useSession();
+  const { remainingToday, isPro, interviewExercises, interviewPreviews } = useEntitlement();
 
-  const topics = useMemo(() => allTopics(), []);
+  const catalog = useMemo<Exercise[]>(() => {
+    if (interviewExercises.length > 0) return [...EXERCISES, ...interviewExercises];
+    const stubs: Exercise[] = interviewPreviews.map((preview) => ({
+      id: preview.id,
+      title: preview.title,
+      description: preview.description,
+      difficulty: 'interview',
+      topics: preview.topics,
+      sourceUrl: 'https://docs.python.org/3/tutorial/index.html',
+      sourceLabel: 'PyTyping Interview',
+      estimatedTime: preview.estimatedTime,
+      code: '',
+      explanation: { overview: '', keyTerms: [], howItWorks: '', relatedExercises: [] },
+      quiz: [{ question: '', options: ['a', 'b'], correctIndex: 0, explanation: '' }],
+    }));
+    return [...EXERCISES, ...stubs];
+  }, [interviewExercises, interviewPreviews]);
+  const lockedIds = useMemo(() => new Set(interviewPreviews.filter((p) => p.locked).map((p) => p.id)), [interviewPreviews]);
+  const topics = useMemo(() => allTopicsFrom(catalog), [catalog]);
   const progress = useMemo(() => getProgress(scopeId), [scopeId, progressVersion]);
   const history = useMemo(() => getHistory(scopeId), [scopeId, progressVersion]);
   const completedIds = useMemo(() => new Set(Object.keys(progress)), [progress]);
-  const reviewQueue = useMemo(() => getReviewQueue(EXERCISES, progress, history), [progress, history]);
+  const reviewQueue = useMemo(() => getReviewQueue(catalog, progress, history), [progress, history, catalog]);
   const streak = useMemo(() => getStreakSummary(progress), [progress]);
   const goal = useMemo(() => getGoalSummary(progress), [progress]);
   const achievements = useMemo(() => getAchievements(progress, history), [progress, history]);
@@ -33,13 +59,13 @@ export default function Home({ onSelectExercise, onNavigate }: HomeProps) {
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return EXERCISES.filter(
+    return catalog.filter(
       (ex) =>
         (difficulty === 'all' || ex.difficulty === difficulty) &&
         (topic === 'all' || ex.topics.includes(topic)) &&
         (!q || ex.title.toLowerCase().includes(q) || ex.description.toLowerCase().includes(q) || ex.topics.some((t) => t.toLowerCase().includes(q))),
     );
-  }, [difficulty, topic, query]);
+  }, [difficulty, topic, query, catalog]);
 
   const chip = (active: boolean) =>
     `rounded-md border px-3 py-1.5 text-xs font-medium transition-all duration-100 ${
@@ -63,7 +89,7 @@ export default function Home({ onSelectExercise, onNavigate }: HomeProps) {
 
         {/* Meta row */}
         <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-content-tertiary">
-          <span>{EXERCISES.length} exercises</span>
+          <span>{catalog.length} exercises</span>
           <span aria-hidden="true" className="text-border-secondary">
             ·
           </span>
@@ -91,7 +117,7 @@ export default function Home({ onSelectExercise, onNavigate }: HomeProps) {
               <FeatureChip label="Profile photos" onClick={() => onNavigate('settings')} />
               <FeatureChip label="Leaderboard" onClick={() => onNavigate('leaderboard')} />
               <FeatureChip label="Pomodoro timer" onClick={() => onNavigate('getting-started')} />
-              <FeatureChip label="IDE-style typing" onClick={() => onNavigate('getting-started')} />
+              <FeatureChip label="PyTyping Pro" onClick={() => onNavigate('pricing')} />
             </div>
           </div>
         )}
@@ -100,6 +126,10 @@ export default function Home({ onSelectExercise, onNavigate }: HomeProps) {
         <div className="mt-6 flex flex-wrap gap-2">
           <StatPill label="Streak" value={`${streak.current}d`} />
           <StatPill label="Today" value={`${goal.completedToday} / ${goal.dailyGoal}`} />
+          <StatPill
+            label="Free left"
+            value={isPro ? 'unlimited' : `${remainingToday}`}
+          />
           <StatPill
             label="Achievements"
             value={`${unlockedAchievements} / ${achievements.length}`}
@@ -218,6 +248,7 @@ export default function Home({ onSelectExercise, onNavigate }: HomeProps) {
               key={ex.id}
               exercise={ex}
               completed={completedIds.has(ex.id)}
+              locked={lockedIds.has(ex.id)}
               onSelect={onSelectExercise}
             />
           ))}

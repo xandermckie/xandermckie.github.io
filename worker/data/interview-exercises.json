@@ -1,0 +1,778 @@
+[
+  {
+    "id": "iv-freq-top-001",
+    "title": "Top Tokens by Frequency",
+    "description": "Count word frequencies and return the k most common tokens without importing Counter.",
+    "difficulty": "interview",
+    "topics": ["hash maps", "sorting", "strings"],
+    "sourceUrl": "https://docs.python.org/3/tutorial/datastructures.html",
+    "sourceLabel": "PyTyping Interview",
+    "estimatedTime": 4,
+    "code": "def top_tokens(text, k):\n    counts = {}\n    for token in text.lower().split():\n        counts[token] = counts.get(token, 0) + 1\n    ranked = sorted(counts.items(), key=lambda item: (-item[1], item[0]))\n    return [word for word, _ in ranked[:k]]\n\nprint(top_tokens(\"be to be or to\", 2))",
+    "explanation": {
+      "overview": "Interviewers often ask you to tally frequencies, then pick a top-k list with a stable tie-break.",
+      "keyTerms": [
+        { "term": "hash map", "definition": "A dict mapping tokens to counts in average O(1) time per update." },
+        { "term": "tuple key", "definition": "Sorting by (-count, word) ranks high counts first and ties alphabetically." }
+      ],
+      "howItWorks": "1. Split and lowercase the text.\n2. Increment a dict of counts.\n3. Sort pairs by descending count, then name.\n4. Slice the first k names.",
+      "designPattern": "Count then rank: build a map, then sort the items.",
+      "relatedExercises": ["iv-window-sum-001"]
+    },
+    "quiz": [
+      {
+        "question": "What does counts.get(token, 0) return for a new token?",
+        "options": ["None", "0", "1", "An error"],
+        "correctIndex": 1,
+        "explanation": "get returns the default 0 when the key is missing."
+      },
+      {
+        "question": "Why is the sort key (-item[1], item[0])?",
+        "options": [
+          "It sorts by length then count",
+          "It ranks high counts first and breaks ties alphabetically",
+          "It randomizes ties",
+          "It drops duplicates"
+        ],
+        "correctIndex": 1,
+        "explanation": "Negating the count sorts descending; the word is the tie-breaker."
+      },
+      {
+        "question": "After the loop, what is counts['to'] for the sample call?",
+        "options": ["1", "2", "3", "0"],
+        "correctIndex": 1,
+        "explanation": "The sample text has two occurrences of 'to'."
+      }
+    ]
+  },
+  {
+    "id": "iv-two-ptr-001",
+    "title": "Pair Sum in a Sorted List",
+    "description": "Find two indices whose values add to a target in a sorted list using two pointers.",
+    "difficulty": "interview",
+    "topics": ["two pointers", "arrays"],
+    "sourceUrl": "https://docs.python.org/3/tutorial/controlflow.html",
+    "sourceLabel": "PyTyping Interview",
+    "estimatedTime": 4,
+    "code": "def pair_sum(nums, target):\n    left, right = 0, len(nums) - 1\n    while left < right:\n        total = nums[left] + nums[right]\n        if total == target:\n            return left, right\n        if total < target:\n            left += 1\n        else:\n            right -= 1\n    return None\n\nprint(pair_sum([2, 3, 6, 9], 9))",
+    "explanation": {
+      "overview": "On a sorted array, two pointers close in from both ends in linear time.",
+      "keyTerms": [
+        { "term": "two pointers", "definition": "A pair of indices that move according to a comparison instead of nested loops." },
+        { "term": "monotonic", "definition": "Because the list is sorted, moving left increases the sum and moving right decreases it." }
+      ],
+      "howItWorks": "Compare the end-pair sum to the target. Walk the left pointer up when the sum is small, the right pointer down when it is large.",
+      "designPattern": "Two pointers on a sorted sequence.",
+      "relatedExercises": ["iv-window-sum-001"]
+    },
+    "quiz": [
+      {
+        "question": "What is the time complexity of this scan?",
+        "options": ["O(n)", "O(n log n)", "O(n^2)", "O(1)"],
+        "correctIndex": 0,
+        "explanation": "Each pointer moves at most n times."
+      },
+      {
+        "question": "If the current sum is too small, which pointer moves?",
+        "options": ["right decreases", "left increases", "both", "neither"],
+        "correctIndex": 1,
+        "explanation": "A larger left value increases the sum on a sorted list."
+      },
+      {
+        "question": "What does pair_sum([2, 3, 6, 9], 9) return?",
+        "options": ["(0, 3)", "(1, 2)", "(0, 2)", "None"],
+        "correctIndex": 1,
+        "explanation": "3 + 6 = 9 at indices 1 and 2."
+      }
+    ]
+  },
+  {
+    "id": "iv-stack-001",
+    "title": "Balanced Delimiters",
+    "description": "Check that brackets, braces, and parentheses nest correctly using a stack.",
+    "difficulty": "interview",
+    "topics": ["stacks", "strings"],
+    "sourceUrl": "https://docs.python.org/3/tutorial/datastructures.html",
+    "sourceLabel": "PyTyping Interview",
+    "estimatedTime": 4,
+    "code": "PAIRS = {')': '(', ']': '[', '}': '{'}\n\ndef balanced(text):\n    stack = []\n    for ch in text:\n        if ch in '([{':\n            stack.append(ch)\n        elif ch in PAIRS:\n            if not stack or stack[-1] != PAIRS[ch]:\n                return False\n            stack.pop()\n    return not stack\n\nprint(balanced('{[()]}'))",
+    "explanation": {
+      "overview": "Matching delimiters is the classic stack interview problem: last opened must close first.",
+      "keyTerms": [
+        { "term": "stack", "definition": "Last-in, first-out structure — here a Python list with append/pop." },
+        { "term": "LIFO", "definition": "The most recently opened opener must match the next closer." }
+      ],
+      "howItWorks": "Push openers. On a closer, pop if it matches; otherwise fail. The stack must be empty at the end.",
+      "designPattern": "Stack for nested structure.",
+      "relatedExercises": ["iv-dfs-001"]
+    },
+    "quiz": [
+      {
+        "question": "What does stack[-1] read?",
+        "options": ["The first opener", "The most recent opener", "A closer", "None"],
+        "correctIndex": 1,
+        "explanation": "The end of the list is the top of the stack."
+      },
+      {
+        "question": "Why return not stack at the end?",
+        "options": [
+          "To invert the result",
+          "Unmatched openers mean the text is not balanced",
+          "Empty means failure",
+          "It clears memory"
+        ],
+        "correctIndex": 1,
+        "explanation": "Leftover openers were never closed."
+      },
+      {
+        "question": "What does balanced('{[()]}') return?",
+        "options": ["False", "True", "None", "0"],
+        "correctIndex": 1,
+        "explanation": "Each closer matches the most recent opener."
+      }
+    ]
+  },
+  {
+    "id": "iv-bsearch-001",
+    "title": "Binary Search Index",
+    "description": "Return the index of a target in a sorted list, or -1, using binary search.",
+    "difficulty": "interview",
+    "topics": ["binary search", "arrays"],
+    "sourceUrl": "https://docs.python.org/3/library/functions.html",
+    "sourceLabel": "PyTyping Interview",
+    "estimatedTime": 4,
+    "code": "def index_of(nums, target):\n    lo, hi = 0, len(nums) - 1\n    while lo <= hi:\n        mid = (lo + hi) // 2\n        if nums[mid] == target:\n            return mid\n        if nums[mid] < target:\n            lo = mid + 1\n        else:\n            hi = mid - 1\n    return -1\n\nprint(index_of([1, 4, 9, 16, 25], 16))",
+    "explanation": {
+      "overview": "Binary search halves the remaining range each step on a sorted list.",
+      "keyTerms": [
+        { "term": "midpoint", "definition": "The middle index of the current inclusive range." },
+        { "term": "inclusive bounds", "definition": "lo and hi both still contain candidate indices." }
+      ],
+      "howItWorks": "Compare nums[mid] to the target and discard the half that cannot contain it.",
+      "designPattern": "Binary search.",
+      "relatedExercises": ["iv-two-ptr-001"]
+    },
+    "quiz": [
+      {
+        "question": "Why must the list be sorted?",
+        "options": [
+          "Python requires it",
+          "Discarding a half is only safe when order is known",
+          "It uses less memory",
+          "mid would overflow"
+        ],
+        "correctIndex": 1,
+        "explanation": "The comparison tells you which side can hold the target only if values increase."
+      },
+      {
+        "question": "What is the usual time complexity?",
+        "options": ["O(n)", "O(log n)", "O(n^2)", "O(1)"],
+        "correctIndex": 1,
+        "explanation": "The range halves each iteration."
+      },
+      {
+        "question": "What does index_of([1, 4, 9, 16, 25], 16) return?",
+        "options": ["2", "3", "4", "-1"],
+        "correctIndex": 1,
+        "explanation": "16 sits at index 3."
+      }
+    ]
+  },
+  {
+    "id": "iv-window-sum-001",
+    "title": "Maximum Window Sum",
+    "description": "Find the maximum sum of any contiguous window of length k.",
+    "difficulty": "interview",
+    "topics": ["sliding window", "arrays"],
+    "sourceUrl": "https://docs.python.org/3/tutorial/controlflow.html",
+    "sourceLabel": "PyTyping Interview",
+    "estimatedTime": 4,
+    "code": "def max_window(nums, k):\n    if k <= 0 or k > len(nums):\n        return None\n    total = sum(nums[:k])\n    best = total\n    for i in range(k, len(nums)):\n        total += nums[i] - nums[i - k]\n        if total > best:\n            best = total\n    return best\n\nprint(max_window([2, 1, 5, 1, 3, 2], 3))",
+    "explanation": {
+      "overview": "A sliding window updates the sum in O(1) by adding the entering value and subtracting the leaving one.",
+      "keyTerms": [
+        { "term": "sliding window", "definition": "A subarray of fixed length that advances one index at a time." },
+        { "term": "running sum", "definition": "The current window total, maintained instead of rescoring from scratch." }
+      ],
+      "howItWorks": "Seed with the first k items, then slide: add nums[i], drop nums[i-k], track the max.",
+      "designPattern": "Fixed-length sliding window.",
+      "relatedExercises": ["iv-kadane-001"]
+    },
+    "quiz": [
+      {
+        "question": "What does nums[i] - nums[i - k] represent?",
+        "options": [
+          "The full array sum",
+          "The value entering minus the value leaving the window",
+          "The average",
+          "A swap"
+        ],
+        "correctIndex": 1,
+        "explanation": "That difference updates the window sum in constant time."
+      },
+      {
+        "question": "Why return None when k > len(nums)?",
+        "options": [
+          "No window of that length exists",
+          "Python forbids it",
+          "It would loop forever",
+          "k must be even"
+        ],
+        "correctIndex": 0,
+        "explanation": "You cannot form a contiguous block longer than the list."
+      },
+      {
+        "question": "What is max_window([2, 1, 5, 1, 3, 2], 3)?",
+        "options": ["6", "8", "9", "5"],
+        "correctIndex": 2,
+        "explanation": "Windows: 8, 7, 9, 6 — the max is 9."
+      }
+    ]
+  },
+  {
+    "id": "iv-kadane-001",
+    "title": "Best Subarray Sum",
+    "description": "Find the maximum sum of any contiguous subarray (Kadane’s algorithm).",
+    "difficulty": "interview",
+    "topics": ["dynamic programming", "arrays"],
+    "sourceUrl": "https://docs.python.org/3/tutorial/introduction.html",
+    "sourceLabel": "PyTyping Interview",
+    "estimatedTime": 4,
+    "code": "def best_subarray(nums):\n    best = current = nums[0]\n    for value in nums[1:]:\n        current = max(value, current + value)\n        if current > best:\n            best = current\n    return best\n\nprint(best_subarray([-2, 1, -3, 4, -1, 2, 1]))",
+    "explanation": {
+      "overview": "At each index you either start a new subarray or extend the previous one.",
+      "keyTerms": [
+        { "term": "Kadane", "definition": "Linear scan that tracks the best ending-here sum and the global best." },
+        { "term": "reset", "definition": "If value alone beats value plus the previous run, start over." }
+      ],
+      "howItWorks": "current is the best sum ending at this index. best is the max of those.",
+      "designPattern": "Linear dynamic programming.",
+      "relatedExercises": ["iv-window-sum-001"]
+    },
+    "quiz": [
+      {
+        "question": "What does max(value, current + value) decide?",
+        "options": [
+          "Whether to start a new subarray or extend",
+          "Whether the list is sorted",
+          "The median",
+          "The window length"
+        ],
+        "correctIndex": 0,
+        "explanation": "If the previous run hurts, drop it and start at value."
+      },
+      {
+        "question": "What is the time complexity?",
+        "options": ["O(n)", "O(n log n)", "O(n^2)", "O(n^3)"],
+        "correctIndex": 0,
+        "explanation": "One pass over the list."
+      },
+      {
+        "question": "What is best_subarray([-2, 1, -3, 4, -1, 2, 1])?",
+        "options": ["4", "6", "2", "1"],
+        "correctIndex": 1,
+        "explanation": "4 + -1 + 2 + 1 = 6."
+      }
+    ]
+  },
+  {
+    "id": "iv-merge-001",
+    "title": "Merge Overlapping Ranges",
+    "description": "Merge overlapping [start, end] intervals after sorting by start.",
+    "difficulty": "interview",
+    "topics": ["intervals", "sorting"],
+    "sourceUrl": "https://docs.python.org/3/howto/sorting.html",
+    "sourceLabel": "PyTyping Interview",
+    "estimatedTime": 5,
+    "code": "def merge_ranges(ranges):\n    if not ranges:\n        return []\n    ordered = sorted(ranges)\n    merged = [list(ordered[0])]\n    for start, end in ordered[1:]:\n        last = merged[-1]\n        if start <= last[1]:\n            last[1] = max(last[1], end)\n        else:\n            merged.append([start, end])\n    return merged\n\nprint(merge_ranges([[1, 3], [2, 6], [8, 10]]))",
+    "explanation": {
+      "overview": "Sort intervals, then extend the last merged range when the next one overlaps.",
+      "keyTerms": [
+        { "term": "overlap", "definition": "The next start is not after the current end." },
+        { "term": "sweep", "definition": "Process intervals in order of start time." }
+      ],
+      "howItWorks": "Sort, seed merged with the first range, and either extend last[1] or append a new range.",
+      "designPattern": "Sort then greedy merge.",
+      "relatedExercises": ["iv-two-ptr-001"]
+    },
+    "quiz": [
+      {
+        "question": "Why sort first?",
+        "options": [
+          "So overlaps are adjacent in the scan",
+          "Python prints them nicer",
+          "To remove duplicates only",
+          "It is required by list()"
+        ],
+        "correctIndex": 0,
+        "explanation": "Once starts are ordered, you only compare with the last merged interval."
+      },
+      {
+        "question": "When do we extend last[1]?",
+        "options": [
+          "When start <= last[1]",
+          "Always",
+          "When start > last[1]",
+          "When end is negative"
+        ],
+        "correctIndex": 0,
+        "explanation": "That is the overlap (or touch) condition used here."
+      },
+      {
+        "question": "What does merge_ranges([[1, 3], [2, 6], [8, 10]]) return?",
+        "options": ["[[1, 6], [8, 10]]", "[[1, 3], [8, 10]]", "[[1, 10]]", "[]"],
+        "correctIndex": 0,
+        "explanation": "[1,3] overlaps [2,6] into [1,6]; [8,10] stays separate."
+      }
+    ]
+  },
+  {
+    "id": "iv-lru-001",
+    "title": "Tiny LRU Cache",
+    "description": "Implement get/put with insertion-ordered dict as a least-recently-used cache.",
+    "difficulty": "interview",
+    "topics": ["caches", "dicts"],
+    "sourceUrl": "https://docs.python.org/3/library/stdtypes.html",
+    "sourceLabel": "PyTyping Interview",
+    "estimatedTime": 5,
+    "code": "class TinyLRU:\n    def __init__(self, cap):\n        self.cap = cap\n        self.data = {}\n\n    def get(self, key):\n        if key not in self.data:\n            return None\n        value = self.data.pop(key)\n        self.data[key] = value\n        return value\n\n    def put(self, key, value):\n        if key in self.data:\n            self.data.pop(key)\n        elif len(self.data) >= self.cap:\n            oldest = next(iter(self.data))\n            self.data.pop(oldest)\n        self.data[key] = value\n\ncache = TinyLRU(2)\ncache.put('a', 1)\ncache.put('b', 2)\nprint(cache.get('a'))",
+    "explanation": {
+      "overview": "Python dicts remember insertion order, so the first key is the least recently used after you move hits to the end.",
+      "keyTerms": [
+        { "term": "LRU", "definition": "Evict the item that has gone unused the longest." },
+        { "term": "move-to-end", "definition": "pop then re-insert so the key becomes most recent." }
+      ],
+      "howItWorks": "get restamps a key. put restamps or, if at capacity, drops next(iter(data)).",
+      "designPattern": "Ordered dict as LRU.",
+      "relatedExercises": ["iv-freq-top-001"]
+    },
+    "quiz": [
+      {
+        "question": "What does next(iter(self.data)) yield?",
+        "options": ["The newest key", "The oldest key", "A random key", "The capacity"],
+        "correctIndex": 1,
+        "explanation": "Iteration order is insertion order; the first key is least recent."
+      },
+      {
+        "question": "Why pop before re-inserting on get?",
+        "options": [
+          "To move the key to the most-recent end",
+          "To delete the cache",
+          "To hash the key",
+          "It is required by cap"
+        ],
+        "correctIndex": 0,
+        "explanation": "Re-inserting appends, marking the key as recently used."
+      },
+      {
+        "question": "After put a, put b, get a, which key is oldest?",
+        "options": ["a", "b", "both", "neither"],
+        "correctIndex": 1,
+        "explanation": "get('a') restamped a, so b is now least recent."
+      }
+    ]
+  },
+  {
+    "id": "iv-dfs-001",
+    "title": "Connected Groups",
+    "description": "Count connected groups in an undirected graph with depth-first search.",
+    "difficulty": "interview",
+    "topics": ["graphs", "dfs"],
+    "sourceUrl": "https://docs.python.org/3/tutorial/datastructures.html",
+    "sourceLabel": "PyTyping Interview",
+    "estimatedTime": 5,
+    "code": "def groups(graph):\n    seen = set()\n\n    def walk(node):\n        seen.add(node)\n        for nxt in graph.get(node, []):\n            if nxt not in seen:\n                walk(nxt)\n\n    count = 0\n    for node in graph:\n        if node not in seen:\n            walk(node)\n            count += 1\n    return count\n\nprint(groups({'a': ['b'], 'b': ['a'], 'c': []}))",
+    "explanation": {
+      "overview": "Each DFS walk from an unseen node discovers one connected component.",
+      "keyTerms": [
+        { "term": "component", "definition": "A maximal set of nodes reachable from each other." },
+        { "term": "seen set", "definition": "Prevents revisiting nodes and infinite loops on cycles." }
+      ],
+      "howItWorks": "For every node, if unseen, walk its edges recursively and increment the group count.",
+      "designPattern": "DFS over an adjacency list.",
+      "relatedExercises": ["iv-topo-001"]
+    },
+    "quiz": [
+      {
+        "question": "Why keep a seen set?",
+        "options": [
+          "To count edges",
+          "To avoid cycling forever on undirected links",
+          "To sort nodes",
+          "To store weights"
+        ],
+        "correctIndex": 1,
+        "explanation": "a-b-a would recurse forever without it."
+      },
+      {
+        "question": "When does count increase?",
+        "options": [
+          "On every edge",
+          "Each time we start a walk from an unseen node",
+          "On every recursive call",
+          "Never"
+        ],
+        "correctIndex": 1,
+        "explanation": "One increment per new component."
+      },
+      {
+        "question": "What does groups({'a': ['b'], 'b': ['a'], 'c': []}) return?",
+        "options": ["1", "2", "3", "0"],
+        "correctIndex": 1,
+        "explanation": "a-b is one group; c is another."
+      }
+    ]
+  },
+  {
+    "id": "iv-bfs-001",
+    "title": "Shortest Hops",
+    "description": "Find the fewest hops between two nodes in an unweighted graph using BFS.",
+    "difficulty": "interview",
+    "topics": ["graphs", "bfs"],
+    "sourceUrl": "https://docs.python.org/3/library/collections.html",
+    "sourceLabel": "PyTyping Interview",
+    "estimatedTime": 5,
+    "code": "from collections import deque\n\ndef hops(graph, start, goal):\n    queue = deque([(start, 0)])\n    seen = {start}\n    while queue:\n        node, dist = queue.popleft()\n        if node == goal:\n            return dist\n        for nxt in graph.get(node, []):\n            if nxt not in seen:\n                seen.add(nxt)\n                queue.append((nxt, dist + 1))\n    return -1\n\nprint(hops({'a': ['b', 'c'], 'b': ['d'], 'c': ['d'], 'd': []}, 'a', 'd'))",
+    "explanation": {
+      "overview": "On unweighted edges, the first time BFS reaches a node is the shortest hop count.",
+      "keyTerms": [
+        { "term": "BFS", "definition": "Explore neighbors in layers using a queue." },
+        { "term": "deque", "definition": "A double-ended queue with O(1) popleft." }
+      ],
+      "howItWorks": "Queue pairs of (node, distance). Mark seen when enqueued so each node is processed once.",
+      "designPattern": "Breadth-first search for shortest path in hops.",
+      "relatedExercises": ["iv-dfs-001"]
+    },
+    "quiz": [
+      {
+        "question": "Why use popleft instead of pop?",
+        "options": [
+          "To process oldest nodes first (a queue)",
+          "It is faster to type",
+          "popleft sorts",
+          "It removes the goal"
+        ],
+        "correctIndex": 0,
+        "explanation": "BFS needs FIFO order."
+      },
+      {
+        "question": "Why add to seen when enqueuing, not when dequeuing?",
+        "options": [
+          "To avoid duplicate queue entries",
+          "It is required by deque",
+          "To skip the start",
+          "It computes weights"
+        ],
+        "correctIndex": 0,
+        "explanation": "Otherwise the same neighbor could be queued many times."
+      },
+      {
+        "question": "What does the sample hops call return?",
+        "options": ["1", "2", "3", "-1"],
+        "correctIndex": 1,
+        "explanation": "a to d is two hops via b or c."
+      }
+    ]
+  },
+  {
+    "id": "iv-heap-001",
+    "title": "Streaming Top Scores",
+    "description": "Track the k highest scores in a stream with a min-heap.",
+    "difficulty": "interview",
+    "topics": ["heaps", "streaming"],
+    "sourceUrl": "https://docs.python.org/3/library/heapq.html",
+    "sourceLabel": "PyTyping Interview",
+    "estimatedTime": 4,
+    "code": "import heapq\n\ndef top_k(scores, k):\n    heap = []\n    for score in scores:\n        if len(heap) < k:\n            heapq.heappush(heap, score)\n        elif score > heap[0]:\n            heapq.heapreplace(heap, score)\n    return sorted(heap, reverse=True)\n\nprint(top_k([4, 9, 1, 7, 8, 2], 3))",
+    "explanation": {
+      "overview": "A min-heap of size k stores the current champions; the root is the smallest of the best.",
+      "keyTerms": [
+        { "term": "min-heap", "definition": "A tree where the smallest value sits at index 0." },
+        { "term": "heapreplace", "definition": "Pop the root and push a new value in one step." }
+      ],
+      "howItWorks": "Fill the heap to k. Then replace the root whenever a new score beats it. Sort descending to report.",
+      "designPattern": "Bounded min-heap for top-k.",
+      "relatedExercises": ["iv-freq-top-001"]
+    },
+    "quiz": [
+      {
+        "question": "What does heap[0] represent here?",
+        "options": [
+          "The largest score overall",
+          "The smallest of the current top k",
+          "The newest score",
+          "k"
+        ],
+        "correctIndex": 1,
+        "explanation": "A min-heap root is the minimum stored value."
+      },
+      {
+        "question": "When do we heapreplace?",
+        "options": [
+          "When the heap is full and score > heap[0]",
+          "Always",
+          "When score is negative",
+          "Never"
+        ],
+        "correctIndex": 0,
+        "explanation": "Only a value better than the current weakest champion belongs in the heap."
+      },
+      {
+        "question": "What does top_k([4, 9, 1, 7, 8, 2], 3) return?",
+        "options": ["[9, 8, 7]", "[9, 8, 4]", "[4, 1, 2]", "[9, 7, 1]"],
+        "correctIndex": 0,
+        "explanation": "The three highest scores are 9, 8, and 7."
+      }
+    ]
+  },
+  {
+    "id": "iv-gen-001",
+    "title": "Lazy Pipeline",
+    "description": "Chain generators to filter and transform a stream without building extra lists.",
+    "difficulty": "interview",
+    "topics": ["generators", "iteration"],
+    "sourceUrl": "https://docs.python.org/3/howto/functional.html",
+    "sourceLabel": "PyTyping Interview",
+    "estimatedTime": 4,
+    "code": "def evens(values):\n    for value in values:\n        if value % 2 == 0:\n            yield value\n\ndef squared(values):\n    for value in values:\n        yield value * value\n\ndef take(n, values):\n    for i, value in enumerate(values):\n        if i >= n:\n            break\n        yield value\n\nprint(list(take(3, squared(evens(range(20))))))",
+    "explanation": {
+      "overview": "Generators pull values only when the next consumer asks, so the pipeline stays lazy.",
+      "keyTerms": [
+        { "term": "yield", "definition": "Pauses the function and hands one value to the caller." },
+        { "term": "lazy", "definition": "Work happens on demand, not up front." }
+      ],
+      "howItWorks": "take pulls from squared, which pulls from evens, which pulls from range — three items only.",
+      "designPattern": "Generator pipeline.",
+      "relatedExercises": ["iv-deco-001"]
+    },
+    "quiz": [
+      {
+        "question": "How many even numbers does take(3, ...) request?",
+        "options": ["All of range(20)", "3", "20", "0"],
+        "correctIndex": 1,
+        "explanation": "take stops after three yielded values."
+      },
+      {
+        "question": "What does yield do inside evens?",
+        "options": [
+          "Builds a list",
+          "Produces the next even number and pauses",
+          "Sorts values",
+          "Raises StopIteration immediately"
+        ],
+        "correctIndex": 1,
+        "explanation": "yield turns the function into a generator."
+      },
+      {
+        "question": "What is list(take(3, squared(evens(range(20)))))?",
+        "options": ["[0, 4, 16]", "[1, 4, 9]", "[0, 2, 4]", "[2, 4, 6]"],
+        "correctIndex": 0,
+        "explanation": "Evens 0, 2, 4 squared are 0, 4, 16."
+      }
+    ]
+  },
+  {
+    "id": "iv-deco-001",
+    "title": "Timing Decorator",
+    "description": "Write a decorator that records how long a function ran using a closure.",
+    "difficulty": "interview",
+    "topics": ["decorators", "closures"],
+    "sourceUrl": "https://docs.python.org/3/glossary.html",
+    "sourceLabel": "PyTyping Interview",
+    "estimatedTime": 4,
+    "code": "import time\nfrom functools import wraps\n\ndef timed(fn):\n    @wraps(fn)\n    def wrapper(*args, **kwargs):\n        start = time.perf_counter()\n        result = fn(*args, **kwargs)\n        elapsed = time.perf_counter() - start\n        wrapper.last_elapsed = elapsed\n        return result\n    wrapper.last_elapsed = 0.0\n    return wrapper\n\n@timed\ndef add(a, b):\n    return a + b\n\nprint(add(2, 3), add.last_elapsed >= 0)",
+    "explanation": {
+      "overview": "Decorators wrap a function and return a new callable that can add timing, caching, or auth.",
+      "keyTerms": [
+        { "term": "closure", "definition": "wrapper remembers fn from the enclosing timed() call." },
+        { "term": "wraps", "definition": "Copies name and docstring from the original function." }
+      ],
+      "howItWorks": "timed returns wrapper. Each call timestamps perf_counter around fn and stores last_elapsed on wrapper.",
+      "designPattern": "Decorator / higher-order function.",
+      "relatedExercises": ["iv-ctx-001"]
+    },
+    "quiz": [
+      {
+        "question": "What does @timed on add mean?",
+        "options": [
+          "add = timed(add)",
+          "add runs twice",
+          "add is deleted",
+          "It is only a comment"
+        ],
+        "correctIndex": 0,
+        "explanation": "The decorator syntax rebinds the name to the wrapper."
+      },
+      {
+        "question": "Why use wraps(fn)?",
+        "options": [
+          "To keep add.__name__ as 'add'",
+          "To make it faster",
+          "To skip the call",
+          "It is required by time"
+        ],
+        "correctIndex": 0,
+        "explanation": "Otherwise the wrapper would expose the name 'wrapper'."
+      },
+      {
+        "question": "Where is last_elapsed stored?",
+        "options": ["On the original fn only", "As an attribute of wrapper", "In a global", "In kwargs"],
+        "correctIndex": 1,
+        "explanation": "The wrapper object holds the most recent duration."
+      }
+    ]
+  },
+  {
+    "id": "iv-ctx-001",
+    "title": "Context Manager",
+    "description": "Implement a context manager that tracks whether a block succeeded.",
+    "difficulty": "interview",
+    "topics": ["context managers", "exceptions"],
+    "sourceUrl": "https://docs.python.org/3/reference/datamodel.html",
+    "sourceLabel": "PyTyping Interview",
+    "estimatedTime": 4,
+    "code": "class Track:\n    def __init__(self):\n        self.ok = False\n\n    def __enter__(self):\n        return self\n\n    def __exit__(self, exc_type, exc, tb):\n        self.ok = exc_type is None\n        return False\n\nwith Track() as t:\n    value = 1 + 1\nprint(t.ok)",
+    "explanation": {
+      "overview": "__enter__/__exit__ power the with statement. __exit__ receives exception info if the block failed.",
+      "keyTerms": [
+        { "term": "exc_type", "definition": "The exception class, or None if the block finished cleanly." },
+        { "term": "return False", "definition": "Do not swallow the exception; let it propagate." }
+      ],
+      "howItWorks": "with calls __enter__, runs the block, then __exit__. ok is True only when exc_type is None.",
+      "designPattern": "Context manager protocol.",
+      "relatedExercises": ["iv-deco-001"]
+    },
+    "quiz": [
+      {
+        "question": "When is t.ok True?",
+        "options": [
+          "Always",
+          "When the with block raised nothing",
+          "When an exception occurred",
+          "Before __enter__"
+        ],
+        "correctIndex": 1,
+        "explanation": "ok is set from exc_type is None."
+      },
+      {
+        "question": "What does returning False from __exit__ mean?",
+        "options": [
+          "Suppress the exception",
+          "Do not suppress the exception",
+          "Retry the block",
+          "Skip __enter__"
+        ],
+        "correctIndex": 1,
+        "explanation": "A true return value would swallow the error."
+      },
+      {
+        "question": "What does the sample print?",
+        "options": ["False", "True", "None", "2"],
+        "correctIndex": 1,
+        "explanation": "1 + 1 does not raise, so ok is True."
+      }
+    ]
+  },
+  {
+    "id": "iv-topo-001",
+    "title": "Task Order",
+    "description": "Produce a valid order of tasks given prerequisites using Kahn’s algorithm.",
+    "difficulty": "interview",
+    "topics": ["graphs", "topological sort"],
+    "sourceUrl": "https://docs.python.org/3/tutorial/datastructures.html",
+    "sourceLabel": "PyTyping Interview",
+    "estimatedTime": 5,
+    "code": "from collections import deque\n\ndef task_order(nodes, edges):\n    incoming = {n: 0 for n in nodes}\n    graph = {n: [] for n in nodes}\n    for src, dst in edges:\n        graph[src].append(dst)\n        incoming[dst] += 1\n    queue = deque([n for n in nodes if incoming[n] == 0])\n    order = []\n    while queue:\n        node = queue.popleft()\n        order.append(node)\n        for nxt in graph[node]:\n            incoming[nxt] -= 1\n            if incoming[nxt] == 0:\n                queue.append(nxt)\n    return order if len(order) == len(nodes) else None\n\nprint(task_order(['a', 'b', 'c'], [('a', 'b'), ('b', 'c')]))",
+    "explanation": {
+      "overview": "Kahn’s algorithm repeatedly takes nodes with indegree 0. If you cannot finish, there is a cycle.",
+      "keyTerms": [
+        { "term": "indegree", "definition": "How many prerequisites still point at a node." },
+        { "term": "topological order", "definition": "An order where every edge goes from earlier to later." }
+      ],
+      "howItWorks": "Count incoming edges, queue zeros, emit a node, decrement neighbors, repeat.",
+      "designPattern": "Kahn topological sort.",
+      "relatedExercises": ["iv-dfs-001"]
+    },
+    "quiz": [
+      {
+        "question": "What does incoming[dst] += 1 record?",
+        "options": [
+          "That dst has one more prerequisite",
+          "That src is done",
+          "A cycle",
+          "The queue size"
+        ],
+        "correctIndex": 0,
+        "explanation": "Each edge is one incoming dependency on dst."
+      },
+      {
+        "question": "Why return None if len(order) != len(nodes)?",
+        "options": [
+          "A cycle (or missing node) blocked the sort",
+          "The queue overflowed",
+          "nodes was empty",
+          "deque failed"
+        ],
+        "correctIndex": 0,
+        "explanation": "Leftover nodes still had indegree > 0."
+      },
+      {
+        "question": "What does the sample print?",
+        "options": ["['c', 'b', 'a']", "['a', 'b', 'c']", "None", "['b']"],
+        "correctIndex": 1,
+        "explanation": "a before b before c satisfies both edges."
+      }
+    ]
+  },
+  {
+    "id": "iv-union-001",
+    "title": "Disjoint Sets",
+    "description": "Union-find with path compression to test whether two people share a group.",
+    "difficulty": "interview",
+    "topics": ["union-find", "graphs"],
+    "sourceUrl": "https://docs.python.org/3/tutorial/classes.html",
+    "sourceLabel": "PyTyping Interview",
+    "estimatedTime": 5,
+    "code": "class Groups:\n    def __init__(self, names):\n        self.parent = {name: name for name in names}\n\n    def find(self, name):\n        if self.parent[name] != name:\n            self.parent[name] = self.find(self.parent[name])\n        return self.parent[name]\n\n    def union(self, a, b):\n        ra, rb = self.find(a), self.find(b)\n        if ra != rb:\n            self.parent[rb] = ra\n\n    def same(self, a, b):\n        return self.find(a) == self.find(b)\n\ng = Groups(['ann', 'bea', 'cam'])\ng.union('ann', 'bea')\nprint(g.same('ann', 'bea'), g.same('ann', 'cam'))",
+    "explanation": {
+      "overview": "Union-find tracks components. find walks to the root; path compression flattens the tree.",
+      "keyTerms": [
+        { "term": "parent map", "definition": "Each node points toward its group representative." },
+        { "term": "path compression", "definition": "After find, point the node straight at the root." }
+      ],
+      "howItWorks": "union links two roots. same is true when both names share a root after find.",
+      "designPattern": "Disjoint-set / union-find.",
+      "relatedExercises": ["iv-dfs-001"]
+    },
+    "quiz": [
+      {
+        "question": "What does find do when parent[name] != name?",
+        "options": [
+          "Deletes the name",
+          "Recurses to the root and compresses the path",
+          "Always returns name",
+          "Creates a new group"
+        ],
+        "correctIndex": 1,
+        "explanation": "That assignment is path compression."
+      },
+      {
+        "question": "When does union skip linking?",
+        "options": [
+          "When a and b already share a root",
+          "Always",
+          "When names are sorted",
+          "When the map is empty"
+        ],
+        "correctIndex": 0,
+        "explanation": "If ra == rb they are already in one group."
+      },
+      {
+        "question": "What does the sample print?",
+        "options": ["True True", "True False", "False False", "False True"],
+        "correctIndex": 1,
+        "explanation": "ann and bea were united; cam was not."
+      }
+    ]
+  }
+]
