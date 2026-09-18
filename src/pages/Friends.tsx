@@ -3,7 +3,7 @@ import type { ChangeEvent } from 'react';
 import Avatar from '../components/Avatar';
 import ShareGhostModal from '../components/ShareGhostModal';
 import { useSession } from '../context/SessionContext';
-import { EXERCISES } from '../lib/exercises';
+import { useLanguage } from '../context/LanguageContext';
 import { importFriendPayload } from '../lib/friend-codes';
 import { getBestReplay, getFriendGhosts, removeFriendGhost } from '../lib/replays';
 import { AVATAR_COLORS } from '../lib/auth';
@@ -21,13 +21,15 @@ function formatWhen(iso: string): string {
 }
 
 export default function Friends({ onShowLogin }: FriendsProps) {
+  const { kit } = useLanguage();
+  const exercises = kit.exercises;
   const { isGuest, displayName, avatarColor, avatarPhoto, scopeId, replayVersion, notifyReplayChange } =
     useSession();
   const [friendCode, setFriendCode] = useState('');
   const [importError, setImportError] = useState<string | null>(null);
   const [importOk, setImportOk] = useState<string | null>(null);
   const [friendVersion, setFriendVersion] = useState(0);
-  const [shareExerciseId, setShareExerciseId] = useState(EXERCISES[0]?.id ?? '');
+  const [shareExerciseId, setShareExerciseId] = useState(exercises[0]?.id ?? '');
   const [shareOpen, setShareOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -105,7 +107,7 @@ export default function Friends({ onShowLogin }: FriendsProps) {
                   onChange={(e) => setShareExerciseId(e.target.value)}
                   className="rounded-md border border-border-tertiary bg-background-primary px-3 py-2 text-sm text-content-primary"
                 >
-                  {EXERCISES.map((ex) => (
+                  {exercises.map((ex) => (
                     <option key={ex.id} value={ex.id}>
                       {ex.title}
                     </option>

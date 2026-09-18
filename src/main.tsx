@@ -1,7 +1,22 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
+import { bootCatalogFromPath } from './lib/catalog';
 import './styles/globals.css';
+
+function initialPathname(): string {
+  try {
+    const stored = sessionStorage.getItem('pytyping:spa-path');
+    if (stored) {
+      return new URL(stored, window.location.origin).pathname;
+    }
+  } catch {
+    /* private mode */
+  }
+  return window.location.pathname;
+}
+
+bootCatalogFromPath(initialPathname());
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {

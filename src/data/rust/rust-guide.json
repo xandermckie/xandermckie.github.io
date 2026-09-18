@@ -1,0 +1,126 @@
+[
+  {
+    "id": "getting-started",
+    "title": "Getting started",
+    "summary": "Rust is a systems language that aims for speed and memory safety without a garbage collector. You write crates, build them with Cargo, and start binaries at fn main.",
+    "bullets": [
+      "Install the toolchain with rustup, then use cargo new, cargo build, and cargo run.",
+      "A crate is a compilation unit. A binary crate needs fn main.",
+      "The compiler (rustc) checks types, ownership, and borrows before your program runs.",
+      "Comments start with // or /* */."
+    ],
+    "examples": [
+      "fn main() {\n    println!(\"Hello, Rust!\");\n}"
+    ]
+  },
+  {
+    "id": "variables-types",
+    "title": "Variables and types",
+    "summary": "Bindings are immutable unless you write mut. Common types include i32, u32, f64, bool, char, String, and &str.",
+    "bullets": [
+      "let x = 5; cannot be assigned again. let mut x = 5; can.",
+      "Shadowing (another let with the same name) can even change the type.",
+      "Integer overflow panics in debug builds and wraps in release by default.",
+      "char is a Unicode scalar value. String is owned UTF-8. &str is a borrowed slice."
+    ],
+    "examples": [
+      "let mut count = 1;\ncount += 1;\nlet label: &str = \"ok\";"
+    ]
+  },
+  {
+    "id": "ownership",
+    "title": "Ownership and borrowing",
+    "summary": "Each value has one owner. Assigning a String moves it. Borrowing with & or &mut lets you use a value without taking it.",
+    "bullets": [
+      "Moves transfer ownership. The old name cannot be used.",
+      "Copy types (integers, bool, char) are duplicated instead of moved.",
+      "You may have many shared &T borrows, or one exclusive &mut T, not both at once.",
+      "Slices (&[T], &str) are borrowed views into existing data."
+    ],
+    "examples": [
+      "fn greet(name: &str) {\n    println!(\"hi {name}\");\n}\n\nlet name = String::from(\"Ada\");\ngreet(&name);"
+    ]
+  },
+  {
+    "id": "control-flow",
+    "title": "Control flow",
+    "summary": "if and match are expressions. loop, while, and for repeat work. Ranges use .. (exclusive) and ..= (inclusive).",
+    "bullets": [
+      "Both arms of an if used as a value must have the same type.",
+      "match is exhaustive: every variant must be handled or covered by _.",
+      "for n in 1..5 walks 1, 2, 3, 4.",
+      "loop is infinite until you break (and break can yield a value)."
+    ],
+    "examples": [
+      "let n = 7;\nlet label = if n > 5 { \"big\" } else { \"small\" };\n\nmatch Some(8) {\n    Some(x) => println!(\"{x}\"),\n    None => println!(\"none\"),\n}"
+    ]
+  },
+  {
+    "id": "structs-enums",
+    "title": "Structs, enums, and match",
+    "summary": "Structs group fields. Enums name a set of variants that can carry data. impl adds methods. Option and Result are enums you will use constantly.",
+    "bullets": [
+      "Methods take self, &self, or &mut self.",
+      "Option<T> is Some(T) or None. Result<T, E> is Ok(T) or Err(E).",
+      "Prefer match or ? over unwrap in real code.",
+      "#[derive(Debug)] generates a Debug impl so you can print with {:?}"
+    ],
+    "examples": [
+      "enum Msg {\n    Quit,\n    Write(String),\n}\n\nimpl Msg {\n    fn is_quit(&self) -> bool {\n        matches!(self, Msg::Quit)\n    }\n}"
+    ]
+  },
+  {
+    "id": "collections",
+    "title": "Collections",
+    "summary": "Vec, String, and HashMap cover most day-one data work. Iterators let you map, filter, and collect without writing every loop by hand.",
+    "bullets": [
+      "vec![1, 2, 3] builds a Vec. len, push, iter, and collect are the usual tools.",
+      "String is growable; push_str appends a &str.",
+      "HashMap::get returns Option<&V>.",
+      "Iterator adapters are lazy until a consumer like sum or collect runs."
+    ],
+    "examples": [
+      "let nums = vec![1, 2, 3];\nlet doubled: Vec<i32> = nums.iter().map(|n| n * 2).collect();"
+    ]
+  },
+  {
+    "id": "errors",
+    "title": "Error handling",
+    "summary": "Use Result for recoverable failures. ? returns the Err to the caller or continues with the Ok value. Panic is for bugs, not expected I/O errors.",
+    "bullets": [
+      "parse, File::open, and many std APIs return Result.",
+      "? needs a function that can return that error type.",
+      "ok_or converts Option into Result.",
+      "Custom error enums keep failure modes readable."
+    ],
+    "examples": [
+      "fn parse_u32(raw: &str) -> Result<u32, std::num::ParseIntError> {\n    Ok(raw.parse()?)\n}"
+    ]
+  },
+  {
+    "id": "traits-generics",
+    "title": "Traits and generics",
+    "summary": "Generics write one function for many types. Trait bounds say what those types must be able to do. Lifetimes are names the compiler uses to check borrows.",
+    "bullets": [
+      "fn larger<T: PartialOrd>(a: T, b: T) -> T is generic over comparable types.",
+      "impl Trait for Type supplies the trait's methods.",
+      "A lifetime 'a on a returned &str ties it to the inputs.",
+      "The apostrophe in 'a is a lifetime, not a character literal."
+    ],
+    "examples": [
+      "fn longer<'a>(a: &'a str, b: &'a str) -> &'a str {\n    if a.len() >= b.len() { a } else { b }\n}"
+    ]
+  },
+  {
+    "id": "next-steps",
+    "title": "Next steps",
+    "summary": "After you can read ownership, Result, and traits, the Rust Book chapters on testing, Cargo, and modules will feel much easier.",
+    "bullets": [
+      "Work through the Rust Book and Rust by Example.",
+      "rustlings is a set of small local exercises.",
+      "cargo test, rustfmt, and clippy are the daily tools.",
+      "Come back here and type the intermediate and advanced snippets."
+    ],
+    "examples": []
+  }
+]

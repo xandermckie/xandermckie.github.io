@@ -37,7 +37,8 @@ export default function TermsPage({ onNavigate }: TermsPageProps) {
       <LegalSection title="The service">
         <p>
           {PRODUCT_NAME} is an educational typing product. The free catalog of exercises may be used subject to a
-          daily completion limit. PyTyping Pro is a paid subscription that removes that limit and unlocks additional
+          daily completion limit. PyTyping Pro is a paid subscription that removes that limit, unlocks every language
+          edition on this site (unlimited completions plus that language’s interview pack), and unlocks additional
           features described on the{' '}
           <LegalLink href="/pricing">Pricing</LegalLink> page. Exercise content is for learning; snippets are
           simplified and may omit production error handling.
@@ -77,8 +78,8 @@ export default function TermsPage({ onNavigate }: TermsPageProps) {
         <p>
           The client application is offered under the MIT License in the public repository. Interview-pack content and
           Polar-gated Pro features are proprietary to {OPERATOR_LEGAL_NAME} and are licensed to you only while your
-          Pro subscription is active. Python and Python logos are trademarks of the Python Software Foundation.
-          {PRODUCT_NAME} is not affiliated with or endorsed by the PSF or Monkeytype.
+          Pro subscription is active. Language names and logos (including Python and Rust) are trademarks of their
+          respective foundations. {PRODUCT_NAME} is not affiliated with or endorsed by those foundations or Monkeytype.
         </p>
       </LegalSection>
 

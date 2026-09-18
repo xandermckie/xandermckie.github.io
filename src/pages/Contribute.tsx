@@ -18,7 +18,7 @@ const CARDS: ContributeCard[] = [
   {
     title: 'Request a new language',
     description:
-      'Want JavaScript, Rust, SQL, or something else? Open an issue and say which language you want. Popular requests get built first.',
+      'Want Go, SQL, or something else? Open an issue and say which language you want. Popular requests get built first. RustEase is already on this site at /rust.',
     cta: 'Request a language →',
     url: GITHUB_LANGUAGE_REQUEST_URL,
     accent: true,
@@ -33,7 +33,7 @@ const CARDS: ContributeCard[] = [
   {
     title: 'Propose a new exercise',
     description:
-      'Have a Python snippet you want in the library? Share the code and a short explanation in a GitHub issue.',
+      'Have a snippet you want in the library? Share the code and a short explanation in a GitHub issue.',
     cta: 'Suggest an exercise →',
     url: GITHUB_EXERCISE_SUGGESTION_URL,
   },

@@ -4,13 +4,14 @@ import QuizPanel from '../components/QuizPanel';
 import BreakdownPanel from '../components/BreakdownPanel';
 import ResultsPanel from '../components/ResultsPanel';
 import CodePeekPanel from '../components/CodePeekPanel';
-import { EXERCISES, getExerciseById as getBundledExercise } from '../lib/exercises';
+import { getExerciseById as getBundledExercise } from '../lib/exercises';
 import { getAttempts, getHistory, getProgress, recordCompletion } from '../lib/progress';
 import type { AttemptSummary } from '../lib/progress';
 import { buildReplay, getBestReplay, saveReplay } from '../lib/replays';
 import { useSession } from '../context/SessionContext';
 import { useSettings } from '../context/SettingsContext';
 import { useEntitlement } from '../context/EntitlementContext';
+import { useLanguage } from '../context/LanguageContext';
 import type { UpgradeReason } from '../context/EntitlementContext';
 import type { ReplayEvent } from '../types/replay';
 import type { QuizScore, TypingStats } from '../types/exercise';
@@ -29,17 +30,20 @@ interface TypingPageProps {
 type Phase = 'typing' | 'results' | 'quiz' | 'breakdown';
 type TypingMode = 'guided' | 'challenge';
 
-function buildChallengePrompt(code: string): string {
+function buildChallengePrompt(code: string, language: string): string {
+  const rustKeep =
+    /^(fn|struct|enum|impl|trait|mod|use|let|const|if|else|for|while|loop|match|unsafe|pub|type|where)\b/;
+  const pythonKeep =
+    /^(def|class|if|elif|else|for|while|try|except|finally|with|import|from)\b/;
+  const keep = language === 'rust' ? rustKeep : pythonKeep;
   return code
     .split('\n')
     .map((line) => {
       const indent = line.match(/^\s*/)?.[0] ?? '';
       const trimmed = line.trim();
       if (!trimmed) return '';
-      if (/^(def|class)\s/.test(trimmed)) return `${indent}${trimmed}`;
-      if (/^(if|elif|else|for|while|try|except|finally|with)\b/.test(trimmed)) return `${indent}${trimmed}`;
-      if (/^(import|from)\s/.test(trimmed)) return `${indent}${trimmed}`;
-      if (trimmed.startsWith('@')) return `${indent}${trimmed}`;
+      if (keep.test(trimmed)) return `${indent}${trimmed}`;
+      if (trimmed.startsWith('@') || trimmed.startsWith('#')) return `${indent}${trimmed}`;
       return `${indent}...`;
     })
     .join('\n');
@@ -59,6 +63,7 @@ export default function TypingPage({
   onUpgradeNeeded,
 }: TypingPageProps) {
   const { interviewExercises, consumeCompletion } = useEntitlement();
+  const { kit } = useLanguage();
   const getExerciseById = (id: string) =>
     getBundledExercise(id) ?? interviewExercises.find((item) => item.id === id);
   const exercise = getExerciseById(exerciseId);
@@ -78,8 +83,8 @@ export default function TypingPage({
   const [savedReplayId, setSavedReplayId] = useState<string | null>(null);
 
   const challengePrompt = useMemo(
-    () => (exercise ? buildChallengePrompt(exercise.code) : ''),
-    [exercise],
+    () => (exercise ? buildChallengePrompt(exercise.code, kit.prismLanguage) : ''),
+    [exercise, kit.prismLanguage],
   );
 
   const related = useMemo(() => {
@@ -90,8 +95,8 @@ export default function TypingPage({
   }, [exercise]);
   const recommendedExerciseId = useMemo(() => {
     if (!exercise) return null;
-    return getRecommendedExerciseId(exercise.id, related, [...EXERCISES, ...interviewExercises], getProgress(scopeId), getHistory(scopeId));
-  }, [exercise, related, scopeId, phase, interviewExercises]);
+    return getRecommendedExerciseId(exercise.id, related, [...kit.exercises, ...interviewExercises], getProgress(scopeId), getHistory(scopeId));
+  }, [exercise, related, scopeId, phase, interviewExercises, kit.exercises]);
 
   // Whenever we leave the typing phase, make sure the chrome is visible again.
   useEffect(() => {

@@ -17,7 +17,7 @@ function emptyState(now: Date = new Date()): GuestCapState {
 }
 
 function readState(now: Date = new Date()): GuestCapState {
-  const raw = loadJSON<unknown>(GUEST_CAP_KEY, emptyState(now));
+  const raw = loadJSON<unknown>(GUEST_CAP_KEY, emptyState(now), undefined, 'shared');
   if (
     raw &&
     typeof raw === 'object' &&
@@ -46,7 +46,7 @@ export function recordGuestCompletion(now: Date = new Date()): { remaining: numb
     return { remaining: 0, allowed: false };
   }
   const next: GuestCapState = { day: utcDayKey(now), count: state.count + 1 };
-  saveJSON(GUEST_CAP_KEY, next);
+  saveJSON(GUEST_CAP_KEY, next, undefined, 'shared');
   return { remaining: Math.max(0, FREE_DAILY_CAP - next.count), allowed: true };
 }
 

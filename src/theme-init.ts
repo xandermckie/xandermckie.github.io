@@ -7,4 +7,4 @@ import { applySettingsToDocument } from './lib/apply-document-settings';
 import { validateSettings } from './lib/settings';
 import { loadValidated } from './lib/storage';
 
-applySettingsToDocument(loadValidated('settings', validateSettings));
+applySettingsToDocument(loadValidated('settings', validateSettings, undefined, 'shared'));

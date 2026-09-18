@@ -27,7 +27,7 @@ export interface FriendGhost {
 
 /** Shareable friend profile bundle (friend codes and .json exports). */
 export interface FriendShareBundle {
-  app: 'pytyping-friend';
+  app: string;
   version: 1;
   displayName: string;
   avatarPhoto?: string;

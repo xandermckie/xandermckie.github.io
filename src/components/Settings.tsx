@@ -15,11 +15,15 @@ import { contrastRatio, formatContrast, meetsContrastAa } from '../lib/contrast'
 import {
   createPlaylist,
   deletePlaylist,
+  loadAllLanguagePlaylists,
   loadPlaylists,
+  saveAllLanguagePlaylists,
   savePlaylists,
   validatePlaylists,
   type Playlist,
 } from '../lib/playlists';
+import { getLanguageId } from '../lib/catalog';
+import { isObject } from '../lib/validation';
 import {
   deleteCloudAccount,
   exportCloudAccount,
@@ -233,7 +237,9 @@ export default function Settings({ onShowLogin, onManageFriends, onNavigate, onR
     setCloudError(null);
     setCloudNotice(null);
     try {
-      await pushCloudSync({ settings, playlists, displayName: cloudName, bio: cloudBio });
+      const byLanguage = loadAllLanguagePlaylists();
+      byLanguage[getLanguageId()] = playlists;
+      await pushCloudSync({ settings, playlists: byLanguage, displayName: cloudName, bio: cloudBio });
       setCloudNotice('Saved to the cloud.');
     } catch (err) {
       setCloudError(err instanceof Error ? err.message : 'Cloud sync failed.');
@@ -248,6 +254,9 @@ export default function Settings({ onShowLogin, onManageFriends, onNavigate, onR
       if (payload.settings) update(validateSettings(payload.settings));
       if (Array.isArray(payload.playlists)) {
         savePlaylists(validatePlaylists(payload.playlists));
+        setPlaylists(loadPlaylists());
+      } else if (payload.playlists && isObject(payload.playlists)) {
+        saveAllLanguagePlaylists(payload.playlists);
         setPlaylists(loadPlaylists());
       }
       if (payload.displayName) setCloudName(payload.displayName);

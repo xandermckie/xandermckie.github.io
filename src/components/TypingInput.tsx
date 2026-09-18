@@ -9,6 +9,7 @@ import { detectVirtualPair } from '../lib/delimiter-pairing';
 import type { VirtualPairState } from '../lib/delimiter-pairing';
 import { computeAccuracy, applyTabToCounters, undoCorrectKeystroke } from '../lib/typing-stats';
 import { useSettings } from '../context/SettingsContext';
+import { useLanguage } from '../context/LanguageContext';
 import type { TypingStats } from '../types/exercise';
 import type { ReplayEvent, TypingReplay } from '../types/replay';
 import { getGhostCursorAt } from '../lib/replays';
@@ -160,6 +161,7 @@ export default function TypingInput({
   onFocusChange,
 }: TypingInputProps) {
   const { settings } = useSettings();
+  const { kit } = useLanguage();
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const pauseDialogRef = useRef<HTMLDivElement>(null);
   const resumeButtonRef = useRef<HTMLButtonElement>(null);
@@ -167,7 +169,7 @@ export default function TypingInput({
   const [a11yAnnouncement, setA11yAnnouncement] = useState('');
 
   // --- Tokenized characters + line grouping (recomputed only when code changes).
-  const cells = useMemo(() => tokenizeToCells(code), [code]);
+  const cells = useMemo(() => tokenizeToCells(code, kit.prismLanguage), [code, kit.prismLanguage]);
   const total = cells.length;
   const lineModels = useMemo(() => {
     const models: Array<{ cells: CharCell[]; start: number }> = [];
@@ -586,7 +588,7 @@ export default function TypingInput({
           onFocus={handleFocus}
           onBlur={handleBlur}
           disabled={done}
-          aria-label="Type the displayed Python code"
+          aria-label={kit.typingAriaLabel}
           aria-describedby={codeDescId}
           aria-autocomplete="none"
           autoCapitalize="off"

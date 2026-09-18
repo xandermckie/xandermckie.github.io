@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Avatar from '../components/Avatar';
 import RankBadge from '../components/RankBadge';
 import ShareGhostModal from '../components/ShareGhostModal';
-import { EXERCISES, DIFFICULTIES, allTopics, getExerciseById } from '../lib/exercises';
+import { DIFFICULTIES, allTopics, getExerciseById } from '../lib/exercises';
 import { importFriendPayload } from '../lib/friend-codes';
 import { getNextRank, getRaceRankState } from '../lib/race-rank';
 import {
@@ -21,6 +21,7 @@ import {
 } from '../lib/replays';
 import { AVATAR_COLORS } from '../lib/auth';
 import { useSession } from '../context/SessionContext';
+import { useLanguage } from '../context/LanguageContext';
 import type { Difficulty } from '../types/exercise';
 import type { FriendGhost, GhostSource, SyntheticGhostTier, TypingReplay } from '../types/replay';
 
@@ -52,12 +53,14 @@ function defaultGhostKey(scopeId: string, exerciseId: string): string {
 }
 
 export default function RaceLobby({ onStartRace, onManageFriends }: RaceLobbyProps) {
+  const { kit } = useLanguage();
+  const exercises = kit.exercises;
   const { scopeId, displayName, avatarColor, avatarPhoto, accounts, replayVersion, notifyReplayChange } =
     useSession();
   const [difficulty, setDifficulty] = useState<DifficultyFilter>('all');
   const [topic, setTopic] = useState<string>('all');
   const [query, setQuery] = useState('');
-  const [exerciseId, setExerciseId] = useState(EXERCISES[0]?.id ?? '');
+  const [exerciseId, setExerciseId] = useState(exercises[0]?.id ?? '');
   const [ghostKey, setGhostKey] = useState('');
   const [importError, setImportError] = useState<string | null>(null);
   const [friendVersion, setFriendVersion] = useState(0);
@@ -67,12 +70,12 @@ export default function RaceLobby({ onStartRace, onManageFriends }: RaceLobbyPro
   const rankState = useMemo(() => getRaceRankState(scopeId), [scopeId, replayVersion]);
   const nextRank = useMemo(() => getNextRank(rankState.peakRaceWpm), [rankState.peakRaceWpm]);
 
-  const topics = useMemo(() => allTopics(), []);
+  const topics = useMemo(() => allTopics(), [kit.id]);
   const friends = useMemo(() => getFriendGhosts(), [friendVersion, replayVersion]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return EXERCISES.filter(
+    return exercises.filter(
       (ex) =>
         (difficulty === 'all' || ex.difficulty === difficulty) &&
         (topic === 'all' || ex.topics.includes(topic)) &&
@@ -81,7 +84,7 @@ export default function RaceLobby({ onStartRace, onManageFriends }: RaceLobbyPro
           ex.description.toLowerCase().includes(q) ||
           ex.topics.some((t) => t.toLowerCase().includes(q))),
     );
-  }, [difficulty, topic, query]);
+  }, [difficulty, topic, query, exercises]);
 
   const ghostOptions = useMemo((): GhostOption[] => {
     if (!exerciseId) return [];

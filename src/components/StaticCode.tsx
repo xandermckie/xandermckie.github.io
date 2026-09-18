@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { tokenizeToCells } from '../lib/highlight';
+import { useLanguage } from '../context/LanguageContext';
 
 interface StaticCodeProps {
   code: string;
@@ -8,8 +9,9 @@ interface StaticCodeProps {
 
 /** Read-only, syntax-highlighted code block (no typing validation state). */
 export default function StaticCode({ code, lineNumbers = true }: StaticCodeProps) {
+  const { kit } = useLanguage();
   const lines = useMemo(() => {
-    const cells = tokenizeToCells(code);
+    const cells = tokenizeToCells(code, kit.prismLanguage);
     const result: Array<typeof cells> = [];
     let buf: typeof cells = [];
     cells.forEach((cell) => {
@@ -22,7 +24,7 @@ export default function StaticCode({ code, lineNumbers = true }: StaticCodeProps
     });
     result.push(buf);
     return result;
-  }, [code]);
+  }, [code, kit.prismLanguage]);
 
   return (
     <pre

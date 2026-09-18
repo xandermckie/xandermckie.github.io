@@ -27,9 +27,11 @@ export interface PortalResponse {
   url: string;
 }
 
+export type SyncedPlaylists = Playlist[] | Record<string, Playlist[]>;
+
 export interface SyncPayload {
   settings?: Settings;
-  playlists?: Playlist[];
+  playlists?: SyncedPlaylists;
   displayName?: string;
   bio?: string;
 }
@@ -161,8 +163,8 @@ export async function recordCloudCompletion(exerciseId: string): Promise<{ remai
   return { remainingToday: body.remainingToday, plan };
 }
 
-export async function fetchInterviewExercises(): Promise<Exercise[]> {
-  const body = await request('/api/exercises/interview');
+export async function fetchInterviewExercises(lang = 'python'): Promise<Exercise[]> {
+  const body = await request(`/api/exercises/interview?lang=${encodeURIComponent(lang)}`);
   return validateExercises(body);
 }
 
@@ -175,8 +177,8 @@ export interface InterviewPreview {
   locked: boolean;
 }
 
-export async function fetchInterviewPreviews(): Promise<InterviewPreview[]> {
-  const body = await request('/api/exercises/interview?preview=1');
+export async function fetchInterviewPreviews(lang = 'python'): Promise<InterviewPreview[]> {
+  const body = await request(`/api/exercises/interview?preview=1&lang=${encodeURIComponent(lang)}`);
   if (!Array.isArray(body)) return [];
   return body.filter((item): item is InterviewPreview => {
     return (

@@ -1,3 +1,4 @@
+import { currentMeta } from './catalog';
 import { validateAvatarPhotoDataUrl } from './profile-photo';
 import {
   getFriendGhosts,
@@ -36,7 +37,7 @@ export function buildFriendShareBundle(
   const name = displayName.trim() || cleanReplays[0].playerName;
   const photo = avatarPhoto ? validateAvatarPhotoDataUrl(avatarPhoto) : null;
   return {
-    app: 'pytyping-friend',
+    app: currentMeta().friendShareApp,
     version: 1,
     displayName: name,
     ...(photo ? { avatarPhoto: photo } : {}),
@@ -46,13 +47,13 @@ export function buildFriendShareBundle(
 
 export function validateFriendShareBundle(raw: unknown): FriendShareBundle | null {
   if (!isObject(raw)) return null;
-  if (raw.app !== 'pytyping-friend' || raw.version !== 1) return null;
+  if (raw.app !== currentMeta().friendShareApp || raw.version !== 1) return null;
   if (!isString(raw.displayName) || !Array.isArray(raw.replays)) return null;
   const replays = raw.replays.map(validateTypingReplay).filter((r): r is TypingReplay => r !== null);
   if (replays.length === 0) return null;
   const photo = validateAvatarPhotoDataUrl(raw.avatarPhoto) ?? undefined;
   return {
-    app: 'pytyping-friend',
+    app: currentMeta().friendShareApp,
     version: 1,
     displayName: raw.displayName.trim() || replays[0].playerName,
     ...(photo ? { avatarPhoto: photo } : {}),

@@ -2,7 +2,7 @@
  * Cloud entitlement (plan, remaining completions) plus checkout helpers.
  * Degrades to a local free guest cap when the API is unreachable.
  */
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import {
   ApiError,
@@ -19,12 +19,7 @@ import {
 import { getGuestRemainingToday, recordGuestCompletion } from '../lib/guest-cap';
 import { FREE_DAILY_CAP } from '../lib/legal';
 import type { Exercise } from '../types/exercise';
-import interviewPreviewData from '../data/interview-preview.json';
-
-const STATIC_INTERVIEW_PREVIEWS: InterviewPreview[] = interviewPreviewData.map((item) => ({
-  ...item,
-  locked: true,
-}));
+import { useLanguage } from './LanguageContext';
 
 export type UpgradeReason = 'cap' | 'interview' | 'feature';
 
@@ -48,58 +43,80 @@ interface EntitlementContextValue {
 const EntitlementContext = createContext<EntitlementContextValue | null>(null);
 
 export function EntitlementProvider({ children }: { children: ReactNode }) {
+  const { kit, languageId } = useLanguage();
+  const staticPreviews = useMemo(
+    () => kit.interviewPreview.map((item) => ({ ...item, locked: true as const })),
+    [kit],
+  );
   const [me, setMe] = useState<MeResponse>(fallbackMe);
   const [apiAvailable, setApiAvailable] = useState(false);
   const [loading, setLoading] = useState(true);
   const [interviewExercises, setInterviewExercises] = useState<Exercise[]>([]);
-  const [interviewPreviews, setInterviewPreviews] = useState<InterviewPreview[]>(STATIC_INTERVIEW_PREVIEWS);
+  const [interviewPreviews, setInterviewPreviews] = useState<InterviewPreview[]>(staticPreviews);
   const [guestRemaining, setGuestRemaining] = useState(() => getGuestRemainingToday());
   const [checkoutBusy, setCheckoutBusy] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const refreshGeneration = useRef(0);
 
   const refresh = useCallback(async () => {
+    const generation = ++refreshGeneration.current;
+    const prefix = kit.interviewIdPrefix;
+    const fallback = staticPreviews;
+    const isCurrent = (): boolean => generation === refreshGeneration.current;
     try {
       const next = await fetchMe();
+      if (!isCurrent()) return;
       setMe(next);
       setApiAvailable(true);
       if (next.plan === 'pro') {
-        setInterviewExercises(await fetchInterviewExercises());
+        const pack = await fetchInterviewExercises(languageId);
+        if (!isCurrent()) return;
+        const matching = pack.filter((item) => item.id.startsWith(prefix));
+        setInterviewExercises(matching);
         setInterviewPreviews([]);
       } else {
         setInterviewExercises([]);
         try {
-          const previews = await fetchInterviewPreviews();
-          setInterviewPreviews(previews.length > 0 ? previews : STATIC_INTERVIEW_PREVIEWS);
+          const previews = await fetchInterviewPreviews(languageId);
+          if (!isCurrent()) return;
+          const matching = previews.filter((item) => item.id.startsWith(prefix));
+          setInterviewPreviews(matching.length > 0 ? matching : fallback);
         } catch {
-          setInterviewPreviews(STATIC_INTERVIEW_PREVIEWS);
+          if (!isCurrent()) return;
+          setInterviewPreviews(fallback);
         }
       }
     } catch {
+      if (!isCurrent()) return;
       setApiAvailable(false);
       setMe(fallbackMe());
       setInterviewExercises([]);
-      setInterviewPreviews(STATIC_INTERVIEW_PREVIEWS);
+      setInterviewPreviews(fallback);
       setGuestRemaining(getGuestRemainingToday());
     } finally {
-      setLoading(false);
+      if (isCurrent()) setLoading(false);
     }
-  }, []);
+  }, [kit.interviewIdPrefix, languageId, staticPreviews]);
 
   useEffect(() => {
+    setInterviewExercises([]);
+    setInterviewPreviews(staticPreviews);
     void refresh();
-  }, [refresh]);
+  }, [refresh, staticPreviews]);
 
   const remainingToday = me.authenticated ? me.remainingToday : guestRemaining;
 
   const canStartExercise = useCallback(
     (exerciseId: string): { allowed: boolean; reason?: UpgradeReason } => {
-      const isInterview = interviewPreviews.some((item) => item.id === exerciseId) || exerciseId.startsWith('iv-');
+      const isInterview =
+        interviewPreviews.some((item) => item.id === exerciseId) ||
+        exerciseId.startsWith(kit.interviewIdPrefix);
       if (isInterview && me.plan !== 'pro') return { allowed: false, reason: 'interview' };
       if (me.plan === 'pro') return { allowed: true };
       if (remainingToday <= 0) return { allowed: false, reason: 'cap' };
       return { allowed: true };
     },
-    [interviewPreviews, me.plan, remainingToday],
+    [interviewPreviews, kit.interviewIdPrefix, me.plan, remainingToday],
   );
 
   const consumeCompletion = useCallback(

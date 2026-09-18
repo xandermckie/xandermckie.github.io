@@ -16,7 +16,8 @@ export default function PricingPage({ onNavigate, onUpgrade }: PricingPageProps)
         <h1 className="text-lg font-medium text-content-primary">Pricing</h1>
         <p className="mt-2 text-sm text-content-secondary">
           PyTyping Pro is {PRO_PRICE_LABEL} per {PRO_INTERVAL_LABEL}. It <strong>automatically renews</strong> until you
-          cancel in the Polar customer portal. Polar is the merchant of record.
+          cancel in the Polar customer portal. Polar is the merchant of record. One Pro subscription unlocks every
+          language edition on this site.
         </p>
       </header>
 
@@ -39,8 +40,8 @@ export default function PricingPage({ onNavigate, onUpgrade }: PricingPageProps)
             <span className="text-sm font-normal text-content-tertiary"> / {PRO_INTERVAL_LABEL}</span>
           </p>
           <ul className="mt-4 list-disc space-y-2 pl-5 text-sm text-content-secondary">
-            <li>Unlimited completions</li>
-            <li>Interview-hard exercise pack</li>
+            <li>Unlimited completions on every language edition</li>
+            <li>That language’s interview-hard exercise pack</li>
             <li>Cloud sync of progress, settings, and playlists</li>
             <li>Exclusive themes, display name, and bio</li>
             <li>Cancel any time; {REFUND_DAYS}-day refund on the latest charge</li>

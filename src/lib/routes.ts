@@ -1,3 +1,6 @@
+import { DEFAULT_LANGUAGE, metaById, metaBySlug, type LanguageId } from '../languages/meta';
+import { currentMeta, getLanguageId, homePathFor } from './catalog';
+
 export const APP_VIEWS = [
   'home',
   'typing',
@@ -48,13 +51,69 @@ const VIEW_TO_PATH: Partial<Record<AppView, string>> = Object.fromEntries(
   Object.entries(PATH_TO_VIEW).map(([path, view]) => [view, path]),
 );
 
-export function viewFromPath(pathname: string): AppView {
-  const trimmed = pathname.replace(/\/+$/, '') || '/';
-  return PATH_TO_VIEW[trimmed] ?? 'home';
+/** Account, billing, and legal: one URL, current edition's chrome. */
+const SHARED_VIEWS = new Set<AppView>([
+  'login',
+  'settings',
+  'contribute',
+  'about',
+  'pricing',
+  'terms',
+  'privacy',
+  'refund',
+  'cookies',
+  'accessibility',
+  'contact',
+]);
+
+export function isSharedView(view: AppView): boolean {
+  return SHARED_VIEWS.has(view);
 }
 
-export function pathFromView(view: AppView): string | null {
-  return VIEW_TO_PATH[view] ?? null;
+export interface ParsedPath {
+  view: AppView;
+  languageId: LanguageId;
+  languageExplicit: boolean;
+}
+
+export function parsePath(pathname: string): ParsedPath {
+  const trimmed = pathname.replace(/\/+$/, '') || '/';
+  const parts = trimmed.split('/').filter(Boolean);
+  const slugMeta = parts[0] ? metaBySlug(parts[0]) : undefined;
+  if (slugMeta) {
+    const rest = parts.length === 1 ? '/' : `/${parts.slice(1).join('/')}`;
+    return {
+      view: PATH_TO_VIEW[rest] ?? 'home',
+      languageId: slugMeta.id,
+      languageExplicit: true,
+    };
+  }
+  return {
+    view: PATH_TO_VIEW[trimmed] ?? 'home',
+    languageId: DEFAULT_LANGUAGE,
+    languageExplicit: false,
+  };
+}
+
+export function viewFromPath(pathname: string): AppView {
+  return parsePath(pathname).view;
+}
+
+export function pathFromView(view: AppView, languageId: LanguageId = getLanguageId()): string | null {
+  const base = VIEW_TO_PATH[view];
+  if (!base) return null;
+  if (isSharedView(view)) return base;
+  const meta = metaById(languageId);
+  if (!meta.slug) return base;
+  return base === '/' ? `/${meta.slug}` : `/${meta.slug}${base}`;
+}
+
+export function languageHomePath(languageId: LanguageId = getLanguageId()): string {
+  return homePathFor(metaById(languageId));
+}
+
+export function currentHomePath(): string {
+  return homePathFor(currentMeta());
 }
 
 export interface LegalNavItem {

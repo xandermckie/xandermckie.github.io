@@ -45,6 +45,9 @@ import { loadValidated, removeKey, saveJSON } from './storage';
 import { isObject, isString } from './validation';
 import { validateAvatarPhotoDataUrl } from './profile-photo';
 import type { FriendGhost } from '../types/replay';
+import { LANGUAGE_METAS } from '../languages/meta';
+import { currentMeta, getLanguageId, setLanguageId } from './catalog';
+import { POMODORO_KEY } from './pomodoro';
 
 /** Maximum backup file size accepted on import (2 MB). */
 export const BACKUP_MAX_BYTES = 2 * 1024 * 1024;
@@ -53,7 +56,7 @@ const SUPPORTED_BACKUP_VERSION = 3;
 const LEGACY_BACKUP_VERSIONS = [2, 3] as const;
 
 interface BackupV3 {
-  app: 'pytyping';
+  app: string;
   version: 3;
   exportedAt: string;
   accounts: Account[];
@@ -124,14 +127,14 @@ export function exportBackup(): string {
     raceRanks[a.id] = getRaceRankState(a.id);
   }
   const backup: BackupV3 = {
-    app: 'pytyping',
+    app: currentMeta().backupApp,
     version: 3,
     exportedAt: new Date().toISOString(),
     accounts,
     session: getSession(),
     progress,
     history,
-    settings: loadValidated(SETTINGS_KEY, validateSettings),
+    settings: loadValidated(SETTINGS_KEY, validateSettings, undefined, 'shared'),
     replays,
     friendGhosts: getFriendGhosts(),
     raceRanks,
@@ -148,8 +151,8 @@ export function importBackup(text: string): ImportResult {
   } catch {
     return { ok: false, error: 'That file is not valid JSON.' };
   }
-  if (!isObject(parsed) || parsed.app !== 'pytyping') {
-    return { ok: false, error: 'This does not look like a PyTyping backup.' };
+  if (!isObject(parsed) || parsed.app !== currentMeta().backupApp) {
+    return { ok: false, error: `This does not look like a ${currentMeta().productName} backup.` };
   }
   const version = parsed.version;
   if (version !== undefined && !LEGACY_BACKUP_VERSIONS.includes(version as 2 | 3)) {
@@ -175,7 +178,7 @@ export function importBackup(text: string): ImportResult {
   if (!saveAccounts(accounts)) {
     return { ok: false, error: 'Could not save imported accounts. Storage may be full or disabled.' };
   }
-  if (!saveJSON(SETTINGS_KEY, settings)) {
+  if (!saveJSON(SETTINGS_KEY, settings, undefined, 'shared')) {
     return { ok: false, error: 'Could not save imported settings. Storage may be full or disabled.' };
   }
   for (const a of accounts) {
@@ -210,14 +213,25 @@ export function importBackup(text: string): ImportResult {
   return { ok: true };
 }
 
-/** Wipe everything PyTyping stored: accounts, sessions, settings, all progress. */
+/** Wipe shared account data plus every language edition's local progress. */
 export function clearAllData(): void {
   const accounts = loadAccounts();
+  const previous = getLanguageId();
+  try {
+    for (const meta of LANGUAGE_METAS) {
+      setLanguageId(meta.id);
+      clearProgress('guest');
+      clearAllReplays(accounts.map((a) => a.id));
+      clearRaceRank('guest');
+      for (const a of accounts) clearRaceRank(a.id);
+      removeKey('friend-ghosts');
+      removeKey('playlists');
+    }
+  } finally {
+    setLanguageId(previous);
+  }
   clearAccountsAndSession();
-  clearProgress('guest');
-  clearAllReplays(accounts.map((a) => a.id));
-  clearRaceRank('guest');
-  for (const a of accounts) clearRaceRank(a.id);
-  removeKey('friend-ghosts');
-  removeKey(SETTINGS_KEY);
+  removeKey(SETTINGS_KEY, undefined, 'shared');
+  removeKey(POMODORO_KEY, undefined, 'shared');
+  removeKey('guest-completions', undefined, 'shared');
 }

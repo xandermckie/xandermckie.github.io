@@ -1,18 +1,24 @@
+import type { LanguageMeta } from '../languages/types';
+import { currentMeta } from '../lib/catalog';
+
 interface LogoProps {
   /** Mark height/width in px. */
   size?: number;
-  /** Show the "pytyping" wordmark next to the mark. */
+  /** Show the product wordmark next to the mark. */
   wordmark?: boolean;
   className?: string;
+  /** Defaults to the active language kit. */
+  kit?: LanguageMeta;
 }
 
 /**
- * PyTyping mark: a terminal prompt `>` with a blinking-style caret bar — the
- * core motif of the app (a code prompt you type into). The chevron uses
- * currentColor so it inherits text color; the caret uses the theme accent, so
- * the logo re-themes for free.
+ * Shared mark: a terminal prompt `>` with a caret bar — the core motif of the
+ * typing loop. The chevron uses currentColor; the caret uses the kit color
+ * (RustEase orange) or the theme accent.
  */
-export default function Logo({ size = 28, wordmark = true, className = '' }: LogoProps) {
+export default function Logo({ size = 28, wordmark = true, className = '', kit }: LogoProps) {
+  const meta = kit ?? currentMeta();
+  const caretFill = meta.caretColor ?? 'var(--color-accent)';
   return (
     <span className={`inline-flex items-center gap-2 ${className}`}>
       <svg
@@ -21,7 +27,7 @@ export default function Logo({ size = 28, wordmark = true, className = '' }: Log
         viewBox="0 0 32 32"
         fill="none"
         role="img"
-        aria-label="PyTyping logo"
+        aria-label={`${meta.productName} logo`}
         className="shrink-0"
       >
         <rect
@@ -41,11 +47,12 @@ export default function Logo({ size = 28, wordmark = true, className = '' }: Log
           strokeLinecap="round"
           strokeLinejoin="round"
         />
-        <rect x="17" y="19.5" width="7" height="2.6" rx="1.3" style={{ fill: 'var(--color-accent)' }} />
+        <rect x="17" y="19.5" width="7" height="2.6" rx="1.3" style={{ fill: caretFill }} />
       </svg>
       {wordmark && (
         <span className="font-mono text-base font-medium leading-none text-content-primary">
-          py<span className="text-accent">typing</span>
+          {meta.wordmark.lead}
+          <span className="text-accent">{meta.wordmark.accent}</span>
         </span>
       )}
     </span>

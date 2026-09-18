@@ -1,10 +1,13 @@
+import { useLanguage } from '../context/LanguageContext';
+
 export default function GettingStarted() {
+  const { kit } = useLanguage();
   return (
     <div className="mx-auto max-w-2xl space-y-10">
       <div>
         <h1 className="text-2xl font-semibold text-content-primary">Getting Started</h1>
         <p className="mt-2 text-sm text-content-secondary">
-          PyTyping is built around real Python code. Type a snippet, answer a short quiz, then read the
+          {kit.productName} is built around real {kit.languageName} code. Type a snippet, answer a short quiz, then read the
           breakdown.
         </p>
       </div>

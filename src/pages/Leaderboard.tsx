@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import RankBadge from '../components/RankBadge';
 import { useSession } from '../context/SessionContext';
-import { EXERCISES } from '../lib/exercises';
+import { useLanguage } from '../context/LanguageContext';
 import { getAggregateStats } from '../lib/progress';
 import { getRaceRankState, getRankForWpm, rankSortValue } from '../lib/race-rank';
 import { getRaceRecords } from '../lib/race-stats';
@@ -12,11 +12,12 @@ type Tab = 'overall' | 'records';
 
 export default function Leaderboard() {
   const { accounts, scopeId } = useSession();
+  const { kit } = useLanguage();
   const [tab, setTab] = useState<Tab>('overall');
   const [overallSort, setOverallSort] = useState<OverallSortKey>('rank');
   const [recordSort, setRecordSort] = useState<RecordSortKey>('finishMs');
 
-  const raceRecords = useMemo(() => getRaceRecords(accounts, EXERCISES), [accounts]);
+  const raceRecords = useMemo(() => getRaceRecords(accounts, kit.exercises), [accounts, kit.exercises]);
 
   const overallRows = useMemo(() => {
     return accounts

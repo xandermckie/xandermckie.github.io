@@ -3,6 +3,7 @@ import { SettingsProvider, useSettings } from './context/SettingsContext';
 import { SessionProvider, useSession } from './context/SessionContext';
 import { PomodoroProvider } from './context/PomodoroContext';
 import { EntitlementProvider, useEntitlement } from './context/EntitlementContext';
+import { LanguageProvider, useLanguage } from './context/LanguageContext';
 import ErrorBoundary from './components/ErrorBoundary';
 import AppHeader from './components/AppHeader';
 import Home from './pages/Home';
@@ -12,10 +13,10 @@ import CommandPalette from './components/CommandPalette';
 import PomodoroWidget from './components/PomodoroWidget';
 import UpgradeModal from './components/UpgradeModal';
 import type { Command } from './components/CommandPalette';
-import { EXERCISES } from './lib/exercises';
 import { PRO_THEME_IDS, THEME_OPTIONS } from './lib/theme';
 import { registerGlobalErrorHandlers } from './lib/global-errors';
-import { pathFromView, viewFromPath, type AppView } from './lib/routes';
+import { parsePath, pathFromView, type AppView } from './lib/routes';
+import type { LanguageId } from './languages/types';
 import type { GhostSource } from './types/replay';
 import type { UpgradeReason } from './context/EntitlementContext';
 
@@ -49,7 +50,7 @@ const PAGE_TITLES: Record<AppView, string> = {
   progress: 'Progress',
   login: 'Log in',
   about: 'About',
-  guide: 'Python guide',
+  guide: 'Guide',
   contribute: 'Contribute',
   'getting-started': 'Getting Started',
   leaderboard: 'Leaderboard',
@@ -68,6 +69,7 @@ const PAGE_TITLES: Record<AppView, string> = {
 function AppShell() {
   const { settings, update } = useSettings();
   const { isGuest, logout } = useSession();
+  const { kit, setLanguage, switchTo } = useLanguage();
   const { canStartExercise, startCheckout, me, checkoutBusy, checkoutError, isPro } = useEntitlement();
   const [view, setViewState] = useState<AppView>(() => {
     try {
@@ -75,13 +77,14 @@ function AppShell() {
       if (stored) {
         sessionStorage.removeItem('pytyping:spa-path');
         const url = new URL(stored, window.location.origin);
-        window.history.replaceState({ view: viewFromPath(url.pathname) }, '', stored);
-        return viewFromPath(url.pathname);
+        const parsed = parsePath(url.pathname);
+        window.history.replaceState({ view: parsed.view }, '', stored);
+        return parsed.view;
       }
     } catch {
       /* private mode */
     }
-    return viewFromPath(window.location.pathname);
+    return parsePath(window.location.pathname).view;
   });
   const [activeId, setActiveId] = useState<string | null>(null);
   const [raceGhost, setRaceGhost] = useState<{ exerciseId: string; source: GhostSource } | null>(null);
@@ -98,11 +101,25 @@ function AppShell() {
     }
   }, []);
 
+  const handleSwitchLanguage = useCallback(
+    (id: LanguageId) => {
+      switchTo(id, 'home');
+      setViewState('home');
+      setActiveId(null);
+      setRaceGhost(null);
+    },
+    [switchTo],
+  );
+
   useEffect(() => {
-    const onPop = () => setViewState(viewFromPath(window.location.pathname));
+    const onPop = () => {
+      const parsed = parsePath(window.location.pathname);
+      if (parsed.languageExplicit) setLanguage(parsed.languageId);
+      setViewState(parsed.view);
+    };
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
-  }, []);
+  }, [setLanguage]);
 
   useEffect(() => {
     if (skipFocusOnMount.current) {
@@ -136,8 +153,11 @@ function AppShell() {
   }, [view]);
 
   useEffect(() => {
-    document.title = `${PAGE_TITLES[view]} | PyTyping`;
-  }, [view]);
+    const pageTitle = view === 'guide' ? kit.guideLabel : PAGE_TITLES[view];
+    document.title = `${pageTitle} | ${kit.productName}`;
+    const description = document.querySelector('meta[name="description"]');
+    if (description) description.setAttribute('content', kit.documentDescription);
+  }, [view, kit]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -166,7 +186,7 @@ function AppShell() {
     const cmds: Command[] = [
       { id: 'nav-getting-started', label: 'Getting Started', hint: 'navigate', run: () => setView('getting-started') },
       { id: 'nav-home', label: 'Go to Exercises', hint: 'navigate', run: () => setView('home') },
-      { id: 'nav-guide', label: 'Go to Python guide', hint: 'navigate', run: () => setView('guide') },
+      { id: 'nav-guide', label: `Go to ${kit.guideLabel}`, hint: 'navigate', run: () => setView('guide') },
       { id: 'nav-leaderboard', label: 'Go to Leaderboard', hint: 'navigate', run: () => setView('leaderboard') },
       { id: 'nav-race', label: 'Go to Race', hint: 'navigate', run: () => setView('race') },
       { id: 'nav-friends', label: 'Go to Friends', hint: 'navigate', run: () => setView('friends') },
@@ -198,7 +218,7 @@ function AppShell() {
       cmds.push({ id: 'logout', label: 'Log out (device)', hint: 'account', run: logout });
     }
     return cmds;
-  }, [isGuest, logout, me.authenticated, isPro, settings.lineNumbers, settings.liveWpm, update, setView]);
+  }, [isGuest, logout, me.authenticated, isPro, kit.guideLabel, settings.lineNumbers, settings.liveWpm, update, setView]);
 
   const handleUpgrade = useCallback(async () => {
     if (!me.authenticated) {
@@ -237,6 +257,7 @@ function AppShell() {
         onNavigate={setView}
         onGoHome={goHome}
         onShowLogin={() => setView('login')}
+        onSwitchLanguage={handleSwitchLanguage}
       />
 
       <main id="main-content" tabIndex={-1} className="flex-1 px-4 py-8 outline-none sm:px-6">
@@ -264,7 +285,7 @@ function AppShell() {
             />
           )}
           {view === 'friends' && <Friends onShowLogin={() => setView('login')} />}
-          {view === 'progress' && <ProgressTracker exercises={EXERCISES} />}
+          {view === 'progress' && <ProgressTracker exercises={kit.exercises} />}
           {view === 'about' && <AboutLegal onNavigate={setView} />}
           {view === 'terms' && <TermsPage onNavigate={setView} />}
           {view === 'privacy' && <PrivacyPage onNavigate={setView} />}
@@ -327,13 +348,15 @@ export default function App() {
   return (
     <ErrorBoundary>
       <SettingsProvider>
-        <SessionProvider>
-          <EntitlementProvider>
-            <PomodoroProvider>
-              <AppShell />
-            </PomodoroProvider>
-          </EntitlementProvider>
-        </SessionProvider>
+        <LanguageProvider>
+          <SessionProvider>
+            <EntitlementProvider>
+              <PomodoroProvider>
+                <AppShell />
+              </PomodoroProvider>
+            </EntitlementProvider>
+          </SessionProvider>
+        </LanguageProvider>
       </SettingsProvider>
     </ErrorBoundary>
   );

@@ -8,6 +8,8 @@
  */
 import Prism from 'prismjs';
 import 'prismjs/components/prism-python';
+import 'prismjs/components/prism-rust';
+import { currentMeta } from './catalog';
 
 export interface CharCell {
   char: string;
@@ -32,10 +34,11 @@ function walk(token: string | Prism.Token, inherited: string, out: CharCell[]): 
   }
 }
 
-/** Tokenize Python source into a flat, per-character cell array. */
-export function tokenizeToCells(code: string): CharCell[] {
+/** Tokenize source into a flat, per-character cell array. */
+export function tokenizeToCells(code: string, language: string = currentMeta().prismLanguage): CharCell[] {
   try {
-    const tokens = Prism.tokenize(code, Prism.languages.python);
+    const grammar = Prism.languages[language] ?? Prism.languages.python;
+    const tokens = Prism.tokenize(code, grammar);
     const cells: CharCell[] = [];
     for (const token of tokens) walk(token, '', cells);
     return cells;

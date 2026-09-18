@@ -1,24 +1,22 @@
 /**
- * Loads the embedded exercise catalogue. exercises.json is imported (not
- * fetched) so it is bundled at build time — the core loop is fully offline.
+ * Loads the embedded exercise catalogue for the active language kit.
  */
-import data from '../data/exercises.json';
+import { getKit } from '../languages';
 import type { Difficulty, Exercise } from '../types/exercise';
-import { validateExercises } from './validation';
+import { getLanguageId } from './catalog';
 
-// Validate at module load. Even though this JSON is bundled (trusted), a single
-// malformed entry from a future edit can't take the whole app down — bad
-// entries are dropped, not rendered.
-export const EXERCISES: Exercise[] = validateExercises(data);
+export function getExercises(): Exercise[] {
+  return getKit(getLanguageId()).exercises;
+}
 
 export function getExerciseById(id: string): Exercise | undefined {
-  return EXERCISES.find((e) => e.id === id);
+  return getExercises().find((e) => e.id === id);
 }
 
 /** Unique topic tags across the catalogue, alphabetized. */
 export function allTopics(): string[] {
   const set = new Set<string>();
-  for (const ex of EXERCISES) for (const t of ex.topics) set.add(t);
+  for (const ex of getExercises()) for (const t of ex.topics) set.add(t);
   return [...set].sort();
 }
 

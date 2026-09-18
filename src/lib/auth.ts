@@ -162,11 +162,11 @@ export function validateAccounts(raw: unknown): Account[] {
 }
 
 export function loadAccounts(): Account[] {
-  return loadValidated(ACCOUNTS_KEY, validateAccounts);
+  return loadValidated(ACCOUNTS_KEY, validateAccounts, undefined, 'shared');
 }
 
 export function saveAccounts(accounts: Account[]): boolean {
-  return saveJSON(ACCOUNTS_KEY, accounts);
+  return saveJSON(ACCOUNTS_KEY, accounts, undefined, 'shared');
 }
 
 const STORAGE_SAVE_ERROR =
@@ -239,7 +239,7 @@ export function deleteAccount(id: string): Account[] {
 /* --------------------------------- session -------------------------------- */
 
 export function getSession(): Session {
-  const raw = loadJSON<unknown>(SESSION_KEY, { kind: 'guest' });
+  const raw = loadJSON<unknown>(SESSION_KEY, { kind: 'guest' }, undefined, 'shared');
   if (isObject(raw) && raw.kind === 'account' && isString(raw.accountId)) {
     return { kind: 'account', accountId: raw.accountId };
   }
@@ -247,11 +247,11 @@ export function getSession(): Session {
 }
 
 export function setSession(session: Session): boolean {
-  return saveJSON(SESSION_KEY, session);
+  return saveJSON(SESSION_KEY, session, undefined, 'shared');
 }
 
 export function clearAccountsAndSession(): void {
   for (const a of loadAccounts()) clearProgress(a.id);
-  removeKey(ACCOUNTS_KEY);
-  removeKey(SESSION_KEY);
+  removeKey(ACCOUNTS_KEY, undefined, 'shared');
+  removeKey(SESSION_KEY, undefined, 'shared');
 }

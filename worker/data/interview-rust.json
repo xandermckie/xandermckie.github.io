@@ -1,0 +1,658 @@
+[
+  {
+    "id": "riv-own-move-001",
+    "title": "Move a String",
+    "description": "Show that assigning a String moves ownership so the original name cannot be used.",
+    "difficulty": "interview",
+    "topics": ["ownership", "moves"],
+    "sourceUrl": "https://doc.rust-lang.org/book/ch04-01-what-is-ownership.html",
+    "sourceLabel": "RustEase Interview",
+    "estimatedTime": 4,
+    "code": "fn take(name: String) -> usize {\n    name.len()\n}\n\nfn main() {\n    let first = String::from(\"ferris\");\n    let n = take(first);\n    println!(\"{n}\");\n}",
+    "explanation": {
+      "overview": "String is not Copy. Passing it into take moves the value; first is gone after the call.",
+      "keyTerms": [
+        { "term": "move", "definition": "Transfer of ownership. The old binding cannot be used." },
+        { "term": "Copy", "definition": "Types like i32 duplicate on assignment. String does not." }
+      ],
+      "howItWorks": "take receives ownership of the heap buffer. After the call, first is uninitialized from the compiler's point of view, so using it would not compile.",
+      "designPattern": "Pass ownership when the callee should free the value; borrow when the caller still needs it.",
+      "relatedExercises": ["riv-borrow-001"]
+    },
+    "quiz": [
+      {
+        "question": "What happens to first after take(first)?",
+        "options": ["It is copied", "It is moved and cannot be used", "It becomes &str", "It is cloned automatically"],
+        "correctIndex": 1,
+        "explanation": "String assignment and pass-by-value move ownership."
+      },
+      {
+        "question": "How would you keep using first after the call?",
+        "options": ["take(first.clone()) or pass &first", "Shadow first", "Mark it Copy", "Use unsafe"],
+        "correctIndex": 0,
+        "explanation": "Clone duplicates, or change the signature to borrow."
+      },
+      {
+        "question": "Why is i32 different?",
+        "options": ["i32 lives on the GPU", "i32 implements Copy", "i32 cannot be passed", "i32 is unsized"],
+        "correctIndex": 1,
+        "explanation": "Copy types are duplicated instead of moved."
+      }
+    ]
+  },
+  {
+    "id": "riv-borrow-001",
+    "title": "Shared Borrow",
+    "description": "Read a String through &str without taking ownership.",
+    "difficulty": "interview",
+    "topics": ["borrowing", "references"],
+    "sourceUrl": "https://doc.rust-lang.org/book/ch04-02-references-and-borrowing.html",
+    "sourceLabel": "RustEase Interview",
+    "estimatedTime": 4,
+    "code": "fn shout(text: &str) -> String {\n    text.to_uppercase()\n}\n\nfn main() {\n    let name = String::from(\"rust\");\n    let loud = shout(&name);\n    println!(\"{name} -> {loud}\");\n}",
+    "explanation": {
+      "overview": "&str is a borrowed view. shout never owns name, so main can print both values.",
+      "keyTerms": [
+        { "term": "shared borrow", "definition": "A &T that lets many readers and no writers." },
+        { "term": "&str", "definition": "A string slice: pointer plus length into UTF-8." }
+      ],
+      "howItWorks": "&name coerces to &str. to_uppercase allocates a new String for the result.",
+      "designPattern": "Prefer &str in APIs so callers can pass String or literals.",
+      "relatedExercises": ["riv-mut-borrow-001"]
+    },
+    "quiz": [
+      {
+        "question": "Does shout free name?",
+        "options": ["Yes", "No", "Only if empty", "Only in release"],
+        "correctIndex": 1,
+        "explanation": "It borrowed; the owner is still main."
+      },
+      {
+        "question": "What does &name become?",
+        "options": ["String", "&str via deref", "OsString", "char"],
+        "correctIndex": 1,
+        "explanation": "Deref coercion turns &String into &str."
+      },
+      {
+        "question": "How many shared borrows of name are allowed at once?",
+        "options": ["One", "Two", "As many as you want", "None"],
+        "correctIndex": 2,
+        "explanation": "Many &T are allowed; they cannot overlap a &mut T."
+      }
+    ]
+  },
+  {
+    "id": "riv-mut-borrow-001",
+    "title": "Exclusive Borrow",
+    "description": "Mutate a String through one &mut at a time.",
+    "difficulty": "interview",
+    "topics": ["borrowing", "mutability"],
+    "sourceUrl": "https://doc.rust-lang.org/book/ch04-02-references-and-borrowing.html",
+    "sourceLabel": "RustEase Interview",
+    "estimatedTime": 4,
+    "code": "fn push_bang(text: &mut String) {\n    text.push('!');\n}\n\nfn main() {\n    let mut greeting = String::from(\"hi\");\n    push_bang(&mut greeting);\n    println!(\"{greeting}\");\n}",
+    "explanation": {
+      "overview": "A &mut T is exclusive. While it is live, no other borrow of that value may exist.",
+      "keyTerms": [
+        { "term": "exclusive borrow", "definition": "One &mut T; no overlapping readers or writers." },
+        { "term": "mut binding", "definition": "The owner must be mut to lend a &mut." }
+      ],
+      "howItWorks": "greeting is mut. push_bang appends through the exclusive borrow, then the borrow ends and println can read.",
+      "designPattern": "Keep &mut scopes short so later reads compile.",
+      "relatedExercises": ["riv-lifetime-001"]
+    },
+    "quiz": [
+      {
+        "question": "Why must greeting be mut?",
+        "options": ["Strings are always mut", "To lend &mut String", "println requires it", "push is a macro"],
+        "correctIndex": 1,
+        "explanation": "Only a mut owner can create an exclusive borrow."
+      },
+      {
+        "question": "Could you print greeting while push_bang holds &mut?",
+        "options": ["Yes", "No, that would alias mutably", "Only with clone", "Only on nightly"],
+        "correctIndex": 1,
+        "explanation": "Shared and exclusive borrows cannot overlap."
+      },
+      {
+        "question": "What does push append?",
+        "options": ["A &str", "A char", "A Vec", "Bytes only"],
+        "correctIndex": 1,
+        "explanation": "String::push takes a char."
+      }
+    ]
+  },
+  {
+    "id": "riv-lifetime-001",
+    "title": "Named Lifetime",
+    "description": "Return the longer of two string slices with an explicit lifetime.",
+    "difficulty": "interview",
+    "topics": ["lifetimes", "slices"],
+    "sourceUrl": "https://doc.rust-lang.org/book/ch10-03-lifetime-syntax.html",
+    "sourceLabel": "RustEase Interview",
+    "estimatedTime": 5,
+    "code": "fn longer<'a>(a: &'a str, b: &'a str) -> &'a str {\n    if a.len() >= b.len() {\n        a\n    } else {\n        b\n    }\n}\n\nfn main() {\n    let left = \"ab\";\n    let right = \"abcd\";\n    println!(\"{}\", longer(left, right));\n}",
+    "explanation": {
+      "overview": "The returned slice cannot outlive either input. 'a names that shared region.",
+      "keyTerms": [
+        { "term": "lifetime", "definition": "A name the compiler uses to check borrows, not a runtime value." },
+        { "term": "elision", "definition": "Rules that fill in lifetimes in common cases. This signature needs an explicit one." }
+      ],
+      "howItWorks": "Both inputs and the output share 'a, so the result is valid as long as both inputs are.",
+      "designPattern": "When a function returns a reference derived from arguments, name the relationship.",
+      "relatedExercises": ["riv-cow-001"]
+    },
+    "quiz": [
+      {
+        "question": "Is 'a a runtime value?",
+        "options": ["Yes, a pointer", "No, compile-time only", "Yes, a usize", "Only in debug"],
+        "correctIndex": 1,
+        "explanation": "Lifetimes are erased at runtime."
+      },
+      {
+        "question": "Why not return a String instead?",
+        "options": ["You can; this version avoids allocation", "String cannot hold UTF-8", "Slices cannot be compared", "main forbids it"],
+        "correctIndex": 0,
+        "explanation": "Owned String would drop the lifetime puzzle at the cost of an alloc."
+      },
+      {
+        "question": "What does the output borrow?",
+        "options": ["A local inside longer", "One of the two inputs", "Static memory always", "The heap allocator"],
+        "correctIndex": 1,
+        "explanation": "It returns a or b."
+      }
+    ]
+  },
+  {
+    "id": "riv-option-001",
+    "title": "Option unwrap_or",
+    "description": "Provide a default when a map lookup returns None.",
+    "difficulty": "interview",
+    "topics": ["option", "hash maps"],
+    "sourceUrl": "https://doc.rust-lang.org/std/option/",
+    "sourceLabel": "RustEase Interview",
+    "estimatedTime": 4,
+    "code": "use std::collections::HashMap;\n\nfn score_of(scores: &HashMap<&str, i32>, name: &str) -> i32 {\n    scores.get(name).copied().unwrap_or(0)\n}\n\nfn main() {\n    let mut scores = HashMap::new();\n    scores.insert(\"a\", 3);\n    println!(\"{}\", score_of(&scores, \"b\"));\n}",
+    "explanation": {
+      "overview": "HashMap::get yields Option<&V>. copied turns Option<&i32> into Option<i32> so unwrap_or can supply 0.",
+      "keyTerms": [
+        { "term": "Option", "definition": "Some(T) or None. Forces you to handle absence." },
+        { "term": "copied", "definition": "Maps Option<&T> to Option<T> when T: Copy." }
+      ],
+      "howItWorks": "\"b\" is missing, so get is None, copied stays None, unwrap_or returns 0.",
+      "designPattern": "Prefer unwrap_or / unwrap_or_else over unwrap in library code.",
+      "relatedExercises": ["riv-hashmap-001"]
+    },
+    "quiz": [
+      {
+        "question": "What does score_of print for \"b\"?",
+        "options": ["3", "0", "panic", "None"],
+        "correctIndex": 1,
+        "explanation": "Missing keys become 0."
+      },
+      {
+        "question": "Why call copied?",
+        "options": ["get returns Option<&i32>", "HashMap stores copies only", "unwrap_or needs &i32", "It clones the map"],
+        "correctIndex": 0,
+        "explanation": "copied lifts the reference so the default can be i32."
+      },
+      {
+        "question": "What is unwrap on None?",
+        "options": ["0", "A panic", "None", "false"],
+        "correctIndex": 1,
+        "explanation": "unwrap panics when the Option is None."
+      }
+    ]
+  },
+  {
+    "id": "riv-result-001",
+    "title": "Propagate Result",
+    "description": "Parse an integer and bubble errors with the ? operator.",
+    "difficulty": "interview",
+    "topics": ["result", "error handling"],
+    "sourceUrl": "https://doc.rust-lang.org/book/ch09-02-recoverable-errors-with-result.html",
+    "sourceLabel": "RustEase Interview",
+    "estimatedTime": 4,
+    "code": "fn parse_plus_one(raw: &str) -> Result<i32, std::num::ParseIntError> {\n    let value: i32 = raw.parse()?;\n    Ok(value + 1)\n}\n\nfn main() {\n    match parse_plus_one(\"9\") {\n        Ok(n) => println!(\"{n}\"),\n        Err(e) => println!(\"{e}\"),\n    }\n}",
+    "explanation": {
+      "overview": "? returns early on Err, otherwise unwraps the Ok payload. The function signature must be compatible.",
+      "keyTerms": [
+        { "term": "Result", "definition": "Ok(T) or Err(E). Recoverable failure." },
+        { "term": "?", "definition": "Early-return operator for Result and Option." }
+      ],
+      "howItWorks": "\"9\".parse() succeeds. ? yields 9, then Ok(10) is returned.",
+      "designPattern": "Use ? in fallible pipelines; match or map_err at the boundary.",
+      "relatedExercises": ["riv-option-001"]
+    },
+    "quiz": [
+      {
+        "question": "What does parse_plus_one(\"9\") return?",
+        "options": ["Ok(9)", "Ok(10)", "Err", "11"],
+        "correctIndex": 1,
+        "explanation": "Parse 9 then add one."
+      },
+      {
+        "question": "What does ? do on Err?",
+        "options": ["Retries", "Returns the Err from this function", "Panics always", "Converts to Option"],
+        "correctIndex": 1,
+        "explanation": "? propagates the error."
+      },
+      {
+        "question": "Could this function return i32 instead?",
+        "options": ["Yes with unwrap", "No, parse never fails", "Only with async", "Only on i64"],
+        "correctIndex": 0,
+        "explanation": "unwrap would panic on bad input; Result is the honest API."
+      }
+    ]
+  },
+  {
+    "id": "riv-trait-001",
+    "title": "Implement a Trait",
+    "description": "Give a custom type a Display impl.",
+    "difficulty": "interview",
+    "topics": ["traits", "fmt"],
+    "sourceUrl": "https://doc.rust-lang.org/book/ch10-02-traits.html",
+    "sourceLabel": "RustEase Interview",
+    "estimatedTime": 5,
+    "code": "use std::fmt;\n\nstruct Point {\n    x: i32,\n    y: i32,\n}\n\nimpl fmt::Display for Point {\n    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {\n        write!(f, \"({}, {})\", self.x, self.y)\n    }\n}\n\nfn main() {\n    println!(\"{}\", Point { x: 2, y: 3 });\n}",
+    "explanation": {
+      "overview": "Display is the trait behind {}. Implementing it lets println format your type.",
+      "keyTerms": [
+        { "term": "trait", "definition": "A set of methods a type can implement." },
+        { "term": "Display", "definition": "User-facing formatting, as opposed to Debug {:?}." }
+      ],
+      "howItWorks": "write! forwards to the formatter. println! looks up Display for Point.",
+      "designPattern": "Implement Display for humans, Debug for developers.",
+      "relatedExercises": ["riv-generic-001"]
+    },
+    "quiz": [
+      {
+        "question": "Which placeholder uses Display?",
+        "options": ["{:?}", "{}", "{:#?}", "{:x}"],
+        "correctIndex": 1,
+        "explanation": "{} is Display."
+      },
+      {
+        "question": "What does fmt return?",
+        "options": ["String", "fmt::Result", "()", "&str"],
+        "correctIndex": 1,
+        "explanation": "Formatting can fail; Result signals that."
+      },
+      {
+        "question": "Is Display automatically derived?",
+        "options": ["Yes always", "No, you implement or skip it", "Yes for structs", "Only for enums"],
+        "correctIndex": 1,
+        "explanation": "Debug can be derived; Display is manual."
+      }
+    ]
+  },
+  {
+    "id": "riv-iter-001",
+    "title": "Iterator Adapter",
+    "description": "Filter and map a slice into a collected Vec.",
+    "difficulty": "interview",
+    "topics": ["iterators", "collect"],
+    "sourceUrl": "https://doc.rust-lang.org/book/ch13-02-iterators.html",
+    "sourceLabel": "RustEase Interview",
+    "estimatedTime": 4,
+    "code": "fn evens_plus_one(nums: &[i32]) -> Vec<i32> {\n    nums.iter()\n        .filter(|n| *n % 2 == 0)\n        .map(|n| n + 1)\n        .collect()\n}\n\nfn main() {\n    println!(\"{:?}\", evens_plus_one(&[1, 2, 3, 4]));\n}",
+    "explanation": {
+      "overview": "Adapters are lazy. collect forces the pipeline into a Vec.",
+      "keyTerms": [
+        { "term": "iterator adapter", "definition": "filter/map/etc. that wrap another iterator." },
+        { "term": "collect", "definition": "Turn an iterator into a collection via FromIterator." }
+      ],
+      "howItWorks": "2 and 4 pass the filter, then become 3 and 5.",
+      "designPattern": "Prefer iterator chains over indexed loops when they stay readable.",
+      "relatedExercises": ["riv-hashmap-001"]
+    },
+    "quiz": [
+      {
+        "question": "What is printed?",
+        "options": ["[1, 2, 3, 4]", "[3, 5]", "[2, 4]", "[1, 3]"],
+        "correctIndex": 1,
+        "explanation": "Even values 2 and 4 plus one."
+      },
+      {
+        "question": "When does filter run?",
+        "options": ["At definition", "When collect pulls items", "On drop", "In a background thread"],
+        "correctIndex": 1,
+        "explanation": "Adapters are lazy."
+      },
+      {
+        "question": "What does iter() yield?",
+        "options": ["i32", "&i32", "Vec<i32>", "Option<i32>"],
+        "correctIndex": 1,
+        "explanation": "slice::iter yields shared references."
+      }
+    ]
+  },
+  {
+    "id": "riv-hashmap-001",
+    "title": "HashMap Entry",
+    "description": "Count tokens with the entry API instead of double lookup.",
+    "difficulty": "interview",
+    "topics": ["hash maps", "entry"],
+    "sourceUrl": "https://doc.rust-lang.org/std/collections/hash_map/enum.Entry.html",
+    "sourceLabel": "RustEase Interview",
+    "estimatedTime": 4,
+    "code": "use std::collections::HashMap;\n\nfn tally(words: &[&str]) -> HashMap<String, u32> {\n    let mut counts = HashMap::new();\n    for word in words {\n        *counts.entry((*word).to_string()).or_insert(0) += 1;\n    }\n    counts\n}\n\nfn main() {\n    let map = tally(&[\"be\", \"to\", \"be\"]);\n    println!(\"{}\", map[\"be\"]);\n}",
+    "explanation": {
+      "overview": "entry returns Occupied or Vacant. or_insert(0) inserts once, then you increment in place.",
+      "keyTerms": [
+        { "term": "Entry", "definition": "A view of a key that may or may not exist yet." },
+        { "term": "or_insert", "definition": "Insert a default if vacant; return a &mut to the value." }
+      ],
+      "howItWorks": "\"be\" is seen twice, so the count becomes 2.",
+      "designPattern": "Use entry to avoid get-then-insert races in sequential code and extra hashing.",
+      "relatedExercises": ["riv-option-001"]
+    },
+    "quiz": [
+      {
+        "question": "What is map[\"be\"]?",
+        "options": ["1", "2", "3", "0"],
+        "correctIndex": 1,
+        "explanation": "Two occurrences of be."
+      },
+      {
+        "question": "What does or_insert return?",
+        "options": ["u32", "&mut u32", "Option<u32>", "bool"],
+        "correctIndex": 1,
+        "explanation": "A mutable reference to the stored count."
+      },
+      {
+        "question": "Why to_string on the key?",
+        "options": ["HashMap owns String keys here", "&str cannot be hashed", "entry requires i32", "It interned the word"],
+        "correctIndex": 0,
+        "explanation": "The map stores owned String keys."
+      }
+    ]
+  },
+  {
+    "id": "riv-enum-match-001",
+    "title": "Match an Enum",
+    "description": "Branch on a custom enum without panicking on unknown variants.",
+    "difficulty": "interview",
+    "topics": ["enums", "match"],
+    "sourceUrl": "https://doc.rust-lang.org/book/ch06-02-match.html",
+    "sourceLabel": "RustEase Interview",
+    "estimatedTime": 4,
+    "code": "enum Token {\n    Ident(String),\n    Number(i32),\n    Eof,\n}\n\nfn describe(token: &Token) -> String {\n    match token {\n        Token::Ident(name) => format!(\"id {name}\"),\n        Token::Number(n) => format!(\"num {n}\"),\n        Token::Eof => String::from(\"eof\"),\n    }\n}\n\nfn main() {\n    println!(\"{}\", describe(&Token::Number(7)));\n}",
+    "explanation": {
+      "overview": "match must cover every variant. Binding name and n extracts payload.",
+      "keyTerms": [
+        { "term": "enum", "definition": "A type that is one of several variants, optionally with data." },
+        { "term": "exhaustiveness", "definition": "The compiler rejects a match that misses a variant." }
+      ],
+      "howItWorks": "Token::Number(7) matches the second arm and formats num 7.",
+      "designPattern": "Prefer match over if-let chains when every variant matters.",
+      "relatedExercises": ["riv-box-001"]
+    },
+    "quiz": [
+      {
+        "question": "What is printed?",
+        "options": ["id 7", "num 7", "eof", "Number"],
+        "correctIndex": 1,
+        "explanation": "The Number arm runs."
+      },
+      {
+        "question": "What if you omit Token::Eof?",
+        "options": ["It compiles", "A compile error", "Runtime panic always", "Eof becomes Ident"],
+        "correctIndex": 1,
+        "explanation": "Matches must be exhaustive."
+      },
+      {
+        "question": "Is Token Copy?",
+        "options": ["Yes", "No, Ident holds String", "Only Eof", "Only Number"],
+        "correctIndex": 1,
+        "explanation": "String is not Copy, so the enum is not Copy."
+      }
+    ]
+  },
+  {
+    "id": "riv-drop-001",
+    "title": "Drop Guard",
+    "description": "Run cleanup when a value goes out of scope.",
+    "difficulty": "interview",
+    "topics": ["drop", "raii"],
+    "sourceUrl": "https://doc.rust-lang.org/std/ops/trait.Drop.html",
+    "sourceLabel": "RustEase Interview",
+    "estimatedTime": 4,
+    "code": "struct Guard<'a> {\n    flag: &'a mut bool,\n}\n\nimpl Drop for Guard<'_> {\n    fn drop(&mut self) {\n        *self.flag = true;\n    }\n}\n\nfn main() {\n    let mut done = false;\n    {\n        let _g = Guard { flag: &mut done };\n    }\n    println!(\"{done}\");\n}",
+    "explanation": {
+      "overview": "Drop runs when the owner is dropped. RAII ties cleanup to scope, even on early return.",
+      "keyTerms": [
+        { "term": "Drop", "definition": "Trait whose drop method runs at the end of a value's life." },
+        { "term": "RAII", "definition": "Resource Acquisition Is Initialization: release in Drop." }
+      ],
+      "howItWorks": "_g ends at the inner block, drop sets done to true, then println sees true.",
+      "designPattern": "Put locks, files, and spans in types that unlock/close on Drop.",
+      "relatedExercises": ["riv-arc-mutex-001"]
+    },
+    "quiz": [
+      {
+        "question": "What is printed?",
+        "options": ["false", "true", "nothing", "panic"],
+        "correctIndex": 1,
+        "explanation": "Drop flipped the flag."
+      },
+      {
+        "question": "When does drop run here?",
+        "options": ["At process exit only", "At the end of the inner block", "Never", "Before Guard is created"],
+        "correctIndex": 1,
+        "explanation": "The binding _g is dropped when the block ends."
+      },
+      {
+        "question": "Does mem::forget run Drop?",
+        "options": ["Yes", "No", "Only in debug", "Only for Copy types"],
+        "correctIndex": 1,
+        "explanation": "forget leaks on purpose and skips Drop."
+      }
+    ]
+  },
+  {
+    "id": "riv-arc-mutex-001",
+    "title": "Arc Mutex Counter",
+    "description": "Share a counter across threads with Arc<Mutex<T>>.",
+    "difficulty": "interview",
+    "topics": ["concurrency", "mutex"],
+    "sourceUrl": "https://doc.rust-lang.org/book/ch16-03-shared-state.html",
+    "sourceLabel": "RustEase Interview",
+    "estimatedTime": 5,
+    "code": "use std::sync::{Arc, Mutex};\nuse std::thread;\n\nfn main() {\n    let counter = Arc::new(Mutex::new(0_u32));\n    let mut handles = vec![];\n    for _ in 0..3 {\n        let counter = Arc::clone(&counter);\n        handles.push(thread::spawn(move || {\n            *counter.lock().unwrap() += 1;\n        }));\n    }\n    for handle in handles {\n        handle.join().unwrap();\n    }\n    println!(\"{}\", *counter.lock().unwrap());\n}",
+    "explanation": {
+      "overview": "Arc shares ownership across threads. Mutex serializes mutation. clone on Arc bumps the refcount.",
+      "keyTerms": [
+        { "term": "Arc", "definition": "Atomically reference-counted pointer, Send + Sync when T is." },
+        { "term": "Mutex", "definition": "Mutual exclusion lock around interior mutability." }
+      ],
+      "howItWorks": "Three threads each add one. After join, the mutex holds 3.",
+      "designPattern": "Arc<Mutex<T>> for shared mutable state; channels when you can avoid sharing.",
+      "relatedExercises": ["riv-channel-001"]
+    },
+    "quiz": [
+      {
+        "question": "What is printed?",
+        "options": ["0", "1", "3", "undefined"],
+        "correctIndex": 2,
+        "explanation": "Three increments under the lock."
+      },
+      {
+        "question": "Why Arc::clone instead of moving counter?",
+        "options": ["Mutex is not Send", "Each thread needs its own Arc handle", "clone copies the u32", "spawn forbids move"],
+        "correctIndex": 1,
+        "explanation": "The original Arc must remain in main for the final read."
+      },
+      {
+        "question": "What does lock().unwrap() do on a poisoned mutex?",
+        "options": ["Returns 0", "Panics", "Resets the lock", "Deadlocks forever"],
+        "correctIndex": 1,
+        "explanation": "unwrap turns a poison error into a panic."
+      }
+    ]
+  },
+  {
+    "id": "riv-channel-001",
+    "title": "mpsc Channel",
+    "description": "Send values from a worker thread over a channel.",
+    "difficulty": "interview",
+    "topics": ["concurrency", "channels"],
+    "sourceUrl": "https://doc.rust-lang.org/book/ch16-02-message-passing.html",
+    "sourceLabel": "RustEase Interview",
+    "estimatedTime": 5,
+    "code": "use std::sync::mpsc;\nuse std::thread;\n\nfn main() {\n    let (tx, rx) = mpsc::channel();\n    thread::spawn(move || {\n        tx.send(41).unwrap();\n    });\n    let value = rx.recv().unwrap();\n    println!(\"{}\", value + 1);\n}",
+    "explanation": {
+      "overview": "mpsc is multiple-producer, single-consumer. send moves the value to the receiver.",
+      "keyTerms": [
+        { "term": "mpsc", "definition": "A queue that moves messages between threads." },
+        { "term": "recv", "definition": "Blocks until a message arrives or the senders drop." }
+      ],
+      "howItWorks": "The worker sends 41. main recv's it and prints 42.",
+      "designPattern": "Prefer message passing when threads should not share memory.",
+      "relatedExercises": ["riv-arc-mutex-001"]
+    },
+    "quiz": [
+      {
+        "question": "What is printed?",
+        "options": ["41", "42", "0", "panic"],
+        "correctIndex": 1,
+        "explanation": "41 plus one."
+      },
+      {
+        "question": "Why move the sender into spawn?",
+        "options": ["Sender is not Clone in this snippet", "recv needs the sender", "Channels are Copy", "main cannot own tx"],
+        "correctIndex": 0,
+        "explanation": "This example moves the only sender; clone tx for multiple producers."
+      },
+      {
+        "question": "What if all senders drop before recv?",
+        "options": ["recv returns Err", "recv hangs forever", "recv yields 0", "The process exits 0"],
+        "correctIndex": 0,
+        "explanation": "Disconnected channel: recv errors."
+      }
+    ]
+  },
+  {
+    "id": "riv-cow-001",
+    "title": "Cow Str",
+    "description": "Borrow when possible and allocate only when mutation is needed.",
+    "difficulty": "interview",
+    "topics": ["cow", "strings"],
+    "sourceUrl": "https://doc.rust-lang.org/std/borrow/enum.Cow.html",
+    "sourceLabel": "RustEase Interview",
+    "estimatedTime": 4,
+    "code": "use std::borrow::Cow;\n\nfn normalize(input: &str) -> Cow<'_, str> {\n    if input.contains(' ') {\n        Cow::Owned(input.replace(' ', \"_\"))\n    } else {\n        Cow::Borrowed(input)\n    }\n}\n\nfn main() {\n    println!(\"{}\", normalize(\"ok\"));\n    println!(\"{}\", normalize(\"a b\"));\n}",
+    "explanation": {
+      "overview": "Cow is clone-on-write: Borrowed until you need an owned clone to mutate.",
+      "keyTerms": [
+        { "term": "Cow", "definition": "Enum of Borrowed or Owned for the same data type." },
+        { "term": "clone-on-write", "definition": "Delay allocation until a write happens." }
+      ],
+      "howItWorks": "\"ok\" stays borrowed. \"a b\" needs replace, so it returns an owned String.",
+      "designPattern": "Return Cow when some inputs need allocation and others do not.",
+      "relatedExercises": ["riv-lifetime-001"]
+    },
+    "quiz": [
+      {
+        "question": "Does normalize(\"ok\") allocate a String?",
+        "options": ["Yes always", "No, it borrows", "Only in release", "Only if interned"],
+        "correctIndex": 1,
+        "explanation": "No spaces, so Cow::Borrowed."
+      },
+      {
+        "question": "What does replace return?",
+        "options": ["&str", "String", "Cow", "Vec<u8>"],
+        "correctIndex": 1,
+        "explanation": "str::replace always allocates a new String."
+      },
+      {
+        "question": "Why the lifetime on Cow<'_, str>?",
+        "options": ["Owned needs it", "Borrowed points at input", "Cow is unsized", "main requires 'static"],
+        "correctIndex": 1,
+        "explanation": "The borrowed variant is tied to input."
+      }
+    ]
+  },
+  {
+    "id": "riv-box-001",
+    "title": "Recursive Box",
+    "description": "Store a recursive enum variant behind Box so the type has a known size.",
+    "difficulty": "interview",
+    "topics": ["smart pointers", "enums"],
+    "sourceUrl": "https://doc.rust-lang.org/book/ch15-01-box.html",
+    "sourceLabel": "RustEase Interview",
+    "estimatedTime": 5,
+    "code": "enum List {\n    Cons(i32, Box<List>),\n    Nil,\n}\n\nfn sum(list: &List) -> i32 {\n    match list {\n        List::Cons(n, tail) => n + sum(tail),\n        List::Nil => 0,\n    }\n}\n\nfn main() {\n    let list = List::Cons(1, Box::new(List::Cons(2, Box::new(List::Nil))));\n    println!(\"{}\", sum(&list));\n}",
+    "explanation": {
+      "overview": "A type cannot contain itself inline (infinite size). Box breaks the cycle with a heap pointer.",
+      "keyTerms": [
+        { "term": "Box", "definition": "Owned heap allocation with a known pointer size." },
+        { "term": "recursive type", "definition": "A type that mentions itself in a variant or field." }
+      ],
+      "howItWorks": "sum walks Cons cells until Nil. 1+2+0 = 3.",
+      "designPattern": "Box (or Rc/Arc) for recursive data; Vec for most sequences.",
+      "relatedExercises": ["riv-enum-match-001"]
+    },
+    "quiz": [
+      {
+        "question": "What is printed?",
+        "options": ["0", "2", "3", "Nil"],
+        "correctIndex": 2,
+        "explanation": "1 + 2."
+      },
+      {
+        "question": "Why Box around List?",
+        "options": ["For Send", "So List has a finite size", "To intern i32", "Because Nil is unsized"],
+        "correctIndex": 1,
+        "explanation": "Indirection makes the enum sized."
+      },
+      {
+        "question": "Is Box<List> the same as &List?",
+        "options": ["Yes", "No, Box owns the heap value", "Yes if Copy", "Only in match"],
+        "correctIndex": 1,
+        "explanation": "Box is owned; &List is a borrow."
+      }
+    ]
+  },
+  {
+    "id": "riv-generic-001",
+    "title": "Trait Bound",
+    "description": "Write a generic function that works for any Display type.",
+    "difficulty": "interview",
+    "topics": ["generics", "traits"],
+    "sourceUrl": "https://doc.rust-lang.org/book/ch10-02-traits.html",
+    "sourceLabel": "RustEase Interview",
+    "estimatedTime": 4,
+    "code": "use std::fmt::Display;\n\nfn label<T: Display>(value: T) -> String {\n    format!(\"value={value}\")\n}\n\nfn main() {\n    println!(\"{}\", label(7));\n    println!(\"{}\", label(\"ok\"));\n}",
+    "explanation": {
+      "overview": "T: Display means any type that implements Display. Monomorphization builds a copy per type.",
+      "keyTerms": [
+        { "term": "trait bound", "definition": "A constraint on a generic type parameter." },
+        { "term": "monomorphization", "definition": "Codegen of a specialized copy per concrete type." }
+      ],
+      "howItWorks": "label(7) uses i32's Display. label(\"ok\") uses &str's Display.",
+      "designPattern": "Bound generics on the behavior you need, not on a pile of concrete types.",
+      "relatedExercises": ["riv-trait-001"]
+    },
+    "quiz": [
+      {
+        "question": "Could label accept a type without Display?",
+        "options": ["Yes", "No, the bound forbids it", "Only with clone", "Only in tests"],
+        "correctIndex": 1,
+        "explanation": "format! needs Display."
+      },
+      {
+        "question": "Is T inferred?",
+        "options": ["No, always written", "Yes from the argument", "Only for i32", "Only with turbofish"],
+        "correctIndex": 1,
+        "explanation": "The compiler infers T from the call."
+      },
+      {
+        "question": "What does format! return?",
+        "options": ["&str", "String", "Cow", "fmt::Arguments"],
+        "correctIndex": 1,
+        "explanation": "format! allocates a String."
+      }
+    ]
+  }
+]

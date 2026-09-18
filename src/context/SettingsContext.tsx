@@ -27,7 +27,7 @@ const SettingsContext = createContext<SettingsContextValue | null>(null);
 
 export function SettingsProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<Settings>(() =>
-    loadValidated(SETTINGS_KEY, validateSettings),
+    loadValidated(SETTINGS_KEY, validateSettings, undefined, 'shared'),
   );
   const [persistError, setPersistError] = useState<string | null>(null);
 
@@ -48,7 +48,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     window.clearTimeout(saveTimer.current);
     saveTimer.current = window.setTimeout(() => {
-      if (saveJSON(SETTINGS_KEY, settings)) {
+      if (saveJSON(SETTINGS_KEY, settings, undefined, 'shared')) {
         setPersistError(null);
       } else {
         setPersistError('Settings could not be saved. Storage may be full or disabled.');

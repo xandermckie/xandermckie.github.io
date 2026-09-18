@@ -2,7 +2,10 @@ import { useRef, useState } from 'react';
 import AccountMenu from './AccountMenu';
 import DisclosurePanel from './DisclosurePanel';
 import Logo from './Logo';
+import { useLanguage } from '../context/LanguageContext';
+import { homePathFor } from '../lib/catalog';
 import type { AppView } from '../lib/routes';
+import type { LanguageId } from '../languages/types';
 
 export type { AppView };
 
@@ -34,6 +37,7 @@ interface AppHeaderProps {
   onNavigate: (view: AppView) => void;
   onGoHome: () => void;
   onShowLogin: () => void;
+  onSwitchLanguage: (id: LanguageId) => void;
 }
 
 function navButtonClass(active: boolean): string {
@@ -58,7 +62,9 @@ export default function AppHeader({
   onNavigate,
   onGoHome,
   onShowLogin,
+  onSwitchLanguage,
 }: AppHeaderProps) {
+  const { kit, otherKits } = useLanguage();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuToggleRef = useRef<HTMLButtonElement>(null);
   const firstMenuItemRef = useRef<HTMLButtonElement>(null);
@@ -78,9 +84,36 @@ export default function AppHeader({
     >
       <div className="relative">
       <div className="mx-auto flex max-w-5xl items-center justify-between gap-2 px-4 py-2.5 sm:px-6">
-        <button type="button" onClick={onGoHome} className="shrink-0 rounded-md" aria-label="PyTyping home">
-          <Logo size={24} />
-        </button>
+        <div className="flex min-w-0 items-center gap-1 sm:gap-2">
+          <button
+            type="button"
+            onClick={onGoHome}
+            className="shrink-0 rounded-md"
+            aria-label={`${kit.productName} home`}
+          >
+            <Logo size={24} kit={kit} />
+          </button>
+          <nav aria-label="Language editions" className="flex flex-wrap items-center gap-1">
+            {otherKits.map((other) => (
+              <a
+                key={other.id}
+                href={homePathFor(other)}
+                onClick={(event) => {
+                  if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) {
+                    return;
+                  }
+                  event.preventDefault();
+                  onSwitchLanguage(other.id);
+                  setMenuOpen(false);
+                }}
+                className="inline-flex min-h-11 items-center gap-1.5 rounded-md px-2 text-xs font-medium text-content-secondary hover:bg-background-secondary hover:text-content-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent sm:text-sm"
+              >
+                <Logo size={16} wordmark={false} kit={other} />
+                <span>{other.switcherLabel}</span>
+              </a>
+            ))}
+          </nav>
+        </div>
 
         <div className="flex min-w-0 items-center gap-1 sm:gap-2">
           {/* Desktop nav */}

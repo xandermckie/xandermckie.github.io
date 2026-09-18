@@ -1,4 +1,5 @@
 import interviewData from '../data/interview-exercises.json';
+import rustInterviewData from '../data/interview-rust.json';
 import type { Env, UserRow } from './env';
 import {
   addCompletion,
@@ -39,7 +40,13 @@ interface InterviewExercise {
   estimatedTime: number;
 }
 
-const INTERVIEW = interviewData as InterviewExercise[];
+const INTERVIEW_PYTHON = interviewData as InterviewExercise[];
+const INTERVIEW_RUST = rustInterviewData as InterviewExercise[];
+
+function interviewPack(lang: string | null): { preview: InterviewExercise[]; full: unknown } {
+  if (lang === 'rust') return { preview: INTERVIEW_RUST, full: rustInterviewData };
+  return { preview: INTERVIEW_PYTHON, full: interviewData };
+}
 
 function isDev(env: Env): boolean {
   return env.ENVIRONMENT === 'development';
@@ -269,11 +276,12 @@ export async function handleApi(request: Request, env: Env): Promise<Response> {
 
     if (method === 'GET' && path === '/api/exercises/interview') {
       const preview = url.searchParams.get('preview') === '1';
+      const pack = interviewPack(url.searchParams.get('lang'));
       const user = await userFromRequest(env, request);
       const plan = user ? (await getEntitlement(env, user.id)).plan : 'free';
       if (preview || plan !== 'pro') {
         return json(
-          INTERVIEW.map((ex) => ({
+          pack.preview.map((ex) => ({
             id: ex.id,
             title: ex.title,
             description: ex.description,
@@ -283,7 +291,7 @@ export async function handleApi(request: Request, env: Env): Promise<Response> {
           })),
         );
       }
-      return json(interviewData);
+      return json(pack.full);
     }
 
     if (method === 'GET' && path === '/api/account/export') {

@@ -103,6 +103,7 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id) {
+          if (id.includes('src/data/rust/exercises.json')) return 'rust-exercises';
           if (id.includes('exercises.json')) return 'exercises';
           if (id.includes('node_modules/prismjs')) return 'prism';
           if (id.includes('node_modules/heic2any')) return 'heic2any';

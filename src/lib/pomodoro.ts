@@ -48,11 +48,11 @@ export function validatePomodoroState(raw: unknown): PomodoroState {
 }
 
 export function loadPomodoroState(): PomodoroState {
-  return loadValidated(POMODORO_KEY, validatePomodoroState);
+  return loadValidated(POMODORO_KEY, validatePomodoroState, undefined, 'shared');
 }
 
 export function savePomodoroState(state: PomodoroState): boolean {
-  return saveJSON(POMODORO_KEY, state);
+  return saveJSON(POMODORO_KEY, state, undefined, 'shared');
 }
 
 export function phaseDuration(phase: PomodoroPhase, config: PomodoroConfig = DEFAULT_POMODORO_CONFIG): number {

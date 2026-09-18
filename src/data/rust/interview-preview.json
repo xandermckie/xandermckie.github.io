@@ -1,0 +1,130 @@
+[
+  {
+    "id": "riv-own-move-001",
+    "title": "Move a String",
+    "description": "Show that assigning a String moves ownership so the original name cannot be used.",
+    "topics": ["ownership", "moves"],
+    "estimatedTime": 4,
+    "locked": true
+  },
+  {
+    "id": "riv-borrow-001",
+    "title": "Shared Borrow",
+    "description": "Read a String through &str without taking ownership.",
+    "topics": ["borrowing", "references"],
+    "estimatedTime": 4,
+    "locked": true
+  },
+  {
+    "id": "riv-mut-borrow-001",
+    "title": "Exclusive Borrow",
+    "description": "Mutate a String through one &mut at a time.",
+    "topics": ["borrowing", "mutability"],
+    "estimatedTime": 4,
+    "locked": true
+  },
+  {
+    "id": "riv-lifetime-001",
+    "title": "Named Lifetime",
+    "description": "Return the longer of two string slices with an explicit lifetime.",
+    "topics": ["lifetimes", "slices"],
+    "estimatedTime": 5,
+    "locked": true
+  },
+  {
+    "id": "riv-option-001",
+    "title": "Option unwrap_or",
+    "description": "Provide a default when a map lookup returns None.",
+    "topics": ["option", "hash maps"],
+    "estimatedTime": 4,
+    "locked": true
+  },
+  {
+    "id": "riv-result-001",
+    "title": "Propagate Result",
+    "description": "Parse an integer and bubble errors with the ? operator.",
+    "topics": ["result", "error handling"],
+    "estimatedTime": 4,
+    "locked": true
+  },
+  {
+    "id": "riv-trait-001",
+    "title": "Implement a Trait",
+    "description": "Give a custom type a Display impl.",
+    "topics": ["traits", "fmt"],
+    "estimatedTime": 5,
+    "locked": true
+  },
+  {
+    "id": "riv-iter-001",
+    "title": "Iterator Adapter",
+    "description": "Filter and map a slice into a collected Vec.",
+    "topics": ["iterators", "collect"],
+    "estimatedTime": 4,
+    "locked": true
+  },
+  {
+    "id": "riv-hashmap-001",
+    "title": "HashMap Entry",
+    "description": "Count tokens with the entry API instead of double lookup.",
+    "topics": ["hash maps", "entry"],
+    "estimatedTime": 4,
+    "locked": true
+  },
+  {
+    "id": "riv-enum-match-001",
+    "title": "Match an Enum",
+    "description": "Branch on a custom enum without panicking on unknown variants.",
+    "topics": ["enums", "match"],
+    "estimatedTime": 4,
+    "locked": true
+  },
+  {
+    "id": "riv-drop-001",
+    "title": "Drop Guard",
+    "description": "Run cleanup when a value goes out of scope.",
+    "topics": ["drop", "raii"],
+    "estimatedTime": 4,
+    "locked": true
+  },
+  {
+    "id": "riv-arc-mutex-001",
+    "title": "Arc Mutex Counter",
+    "description": "Share a counter across threads with Arc<Mutex<T>>.",
+    "topics": ["concurrency", "mutex"],
+    "estimatedTime": 5,
+    "locked": true
+  },
+  {
+    "id": "riv-channel-001",
+    "title": "mpsc Channel",
+    "description": "Send values from a worker thread over a channel.",
+    "topics": ["concurrency", "channels"],
+    "estimatedTime": 5,
+    "locked": true
+  },
+  {
+    "id": "riv-cow-001",
+    "title": "Cow Str",
+    "description": "Borrow when possible and allocate only when mutation is needed.",
+    "topics": ["cow", "strings"],
+    "estimatedTime": 4,
+    "locked": true
+  },
+  {
+    "id": "riv-box-001",
+    "title": "Recursive Box",
+    "description": "Store a recursive enum variant behind Box so the type has a known size.",
+    "topics": ["smart pointers", "enums"],
+    "estimatedTime": 5,
+    "locked": true
+  },
+  {
+    "id": "riv-generic-001",
+    "title": "Trait Bound",
+    "description": "Write a generic function that works for any Display type.",
+    "topics": ["generics", "traits"],
+    "estimatedTime": 4,
+    "locked": true
+  }
+]

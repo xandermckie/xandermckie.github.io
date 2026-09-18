@@ -2,10 +2,11 @@ import { useMemo, useState } from 'react';
 import ExerciseCard from '../components/ExerciseCard';
 import Logo from '../components/Logo';
 import type { AppView } from '../lib/routes';
-import { EXERCISES, DIFFICULTIES } from '../lib/exercises';
+import { DIFFICULTIES } from '../lib/exercises';
 import { getHistory, getProgress } from '../lib/progress';
 import { useSession } from '../context/SessionContext';
 import { useEntitlement } from '../context/EntitlementContext';
+import { useLanguage } from '../context/LanguageContext';
 import type { Difficulty, Exercise } from '../types/exercise';
 import { getAchievements, getGoalSummary, getReviewQueue, getStreakSummary } from '../lib/learning';
 
@@ -28,25 +29,33 @@ export default function Home({ onSelectExercise, onNavigate }: HomeProps) {
   const [query, setQuery] = useState('');
   const { scopeId, progressVersion } = useSession();
   const { remainingToday, isPro, interviewExercises, interviewPreviews } = useEntitlement();
+  const { kit } = useLanguage();
 
   const catalog = useMemo<Exercise[]>(() => {
-    if (interviewExercises.length > 0) return [...EXERCISES, ...interviewExercises];
-    const stubs: Exercise[] = interviewPreviews.map((preview) => ({
+    const matchingPack = interviewExercises.filter((item) => item.id.startsWith(kit.interviewIdPrefix));
+    if (matchingPack.length > 0) return [...kit.exercises, ...matchingPack];
+    const matchingPreviews = interviewPreviews.filter((preview) => preview.id.startsWith(kit.interviewIdPrefix));
+    const previews = matchingPreviews.length > 0 ? matchingPreviews : kit.interviewPreview;
+    const stubs: Exercise[] = previews.map((preview) => ({
       id: preview.id,
       title: preview.title,
       description: preview.description,
       difficulty: 'interview',
       topics: preview.topics,
-      sourceUrl: 'https://docs.python.org/3/tutorial/index.html',
-      sourceLabel: 'PyTyping Interview',
+      sourceUrl: kit.interviewSourceUrl,
+      sourceLabel: kit.interviewSourceLabel,
       estimatedTime: preview.estimatedTime,
       code: '',
       explanation: { overview: '', keyTerms: [], howItWorks: '', relatedExercises: [] },
       quiz: [{ question: '', options: ['a', 'b'], correctIndex: 0, explanation: '' }],
     }));
-    return [...EXERCISES, ...stubs];
-  }, [interviewExercises, interviewPreviews]);
-  const lockedIds = useMemo(() => new Set(interviewPreviews.filter((p) => p.locked).map((p) => p.id)), [interviewPreviews]);
+    return [...kit.exercises, ...stubs];
+  }, [interviewExercises, interviewPreviews, kit]);
+  const lockedIds = useMemo(() => {
+    const matchingPack = interviewExercises.filter((item) => item.id.startsWith(kit.interviewIdPrefix));
+    if (matchingPack.length > 0) return new Set<string>();
+    return new Set(kit.interviewPreview.map((preview) => preview.id));
+  }, [interviewExercises, kit]);
   const topics = useMemo(() => allTopicsFrom(catalog), [catalog]);
   const progress = useMemo(() => getProgress(scopeId), [scopeId, progressVersion]);
   const history = useMemo(() => getHistory(scopeId), [scopeId, progressVersion]);
@@ -78,13 +87,12 @@ export default function Home({ onSelectExercise, onNavigate }: HomeProps) {
     <div className="mx-auto w-full max-w-5xl">
       {/* Hero */}
       <header className="py-12 sm:py-20">
-        <Logo size={36} wordmark={false} className="mb-6 text-content-primary" />
+        <Logo size={36} wordmark={false} className="mb-6 text-content-primary" kit={kit} />
         <h1 className="text-3xl font-semibold tracking-tight text-content-primary sm:text-4xl">
-          Learn Python by typing it.
+          {kit.homeHeadline}
         </h1>
         <p className="mt-4 max-w-lg text-base leading-relaxed text-content-secondary">
-          Type real Python snippets one character at a time. When you finish, take a short quiz and read
-          a breakdown of what you typed.
+          {kit.homeSubhead}
         </p>
 
         {/* Meta row */}
@@ -117,7 +125,7 @@ export default function Home({ onSelectExercise, onNavigate }: HomeProps) {
               <FeatureChip label="Profile photos" onClick={() => onNavigate('settings')} />
               <FeatureChip label="Leaderboard" onClick={() => onNavigate('leaderboard')} />
               <FeatureChip label="Pomodoro timer" onClick={() => onNavigate('getting-started')} />
-              <FeatureChip label="PyTyping Pro" onClick={() => onNavigate('pricing')} />
+              <FeatureChip label={`${kit.productName} Pro`} onClick={() => onNavigate('pricing')} />
             </div>
           </div>
         )}

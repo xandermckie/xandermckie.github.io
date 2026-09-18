@@ -1,4 +1,5 @@
-import { loadJSON, saveJSON } from './storage';
+import { LANGUAGE_METAS } from '../languages/meta';
+import { loadJSON, loadJSONAt, saveJSON, saveJSONAt } from './storage';
 import { isObject, isString } from './validation';
 
 export interface Playlist {
@@ -31,6 +32,20 @@ export function loadPlaylists(): Playlist[] {
 
 export function savePlaylists(playlists: Playlist[]): boolean {
   return saveJSON(PLAYLISTS_KEY, validatePlaylists(playlists));
+}
+
+export function loadAllLanguagePlaylists(): Record<string, Playlist[]> {
+  const out: Record<string, Playlist[]> = {};
+  for (const meta of LANGUAGE_METAS) {
+    out[meta.id] = validatePlaylists(loadJSONAt(meta.storagePrefix, PLAYLISTS_KEY, []));
+  }
+  return out;
+}
+
+export function saveAllLanguagePlaylists(map: Record<string, unknown>): void {
+  for (const meta of LANGUAGE_METAS) {
+    saveJSONAt(meta.storagePrefix, PLAYLISTS_KEY, validatePlaylists(map[meta.id]));
+  }
 }
 
 export function createPlaylist(name: string, exerciseIds: string[] = []): Playlist | null {
