@@ -108,7 +108,7 @@ export default function AppHeader({
                 }}
                 className="inline-flex min-h-11 items-center gap-1.5 rounded-md px-2 text-xs font-medium text-content-secondary hover:bg-background-secondary hover:text-content-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent sm:text-sm"
               >
-                <Logo size={16} wordmark={false} kit={other} />
+                <Logo size={20} wordmark={false} kit={other} />
                 <span>{other.switcherLabel}</span>
               </a>
             ))}
