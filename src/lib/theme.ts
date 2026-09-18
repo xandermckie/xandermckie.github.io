@@ -25,7 +25,8 @@ export type ThemePresetId =
   | 'hc-dark'
   | 'ember'
   | 'paper'
-  | 'terminal';
+  | 'terminal'
+  | 'elppa';
 
 export type ThemeId = ThemePresetId | 'custom';
 
@@ -405,6 +406,23 @@ export const PRESETS: Record<ThemePresetId, Palette> = {
     '--color-border-tertiary': 'rgba(61, 220, 132, 0.12)',
     ...SYNTAX_DARK,
   },
+  // ponytail: iOS-inspired clean theme with generous whitespace, high contrast, no gradients
+  elppa: {
+    '--color-background-primary': '#ffffff',
+    '--color-background-secondary': '#f5f5f7',
+    '--color-background-tertiary': '#e8e8ed',
+    '--color-text-primary': '#1d1d1f',
+    '--color-text-secondary': '#6e6e73',
+    '--color-text-tertiary': '#86868b',
+    '--color-accent': '#007aff',
+    '--color-error': '#ff3b30',
+    '--color-success': '#34c759',
+    '--color-warning': '#ff9500',
+    '--color-border-primary': 'rgba(0, 0, 0, 0.15)',
+    '--color-border-secondary': 'rgba(0, 0, 0, 0.08)',
+    '--color-border-tertiary': 'rgba(0, 0, 0, 0.04)',
+    ...SYNTAX_LIGHT,
+  },
 };
 
 export interface ThemeOption {
@@ -416,6 +434,7 @@ export interface ThemeOption {
 
 export const THEME_OPTIONS: ThemeOption[] = [
   { id: 'light', label: 'Light' },
+  { id: 'elppa', label: 'Elppa' },
   { id: 'monokia', label: 'Monokia' },
   { id: 'dracula', label: 'Dracula' },
   { id: 'nord', label: 'Nord' },
