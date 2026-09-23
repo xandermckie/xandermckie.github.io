@@ -817,11 +817,11 @@ async function shareScore() {
   try {
     await document.fonts.ready;
     const canvas = drawScoreCard();
-    const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
-    if (!blob) throw new Error('could not draw the score');
+    const blob = await (await fetch(canvas.toDataURL('image/png'))).blob();
+    if (!blob || blob.size < 8) throw new Error('could not draw the score');
     const file = new File([blob], 'hadyn-2048.png', { type: 'image/png' });
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      await navigator.share({ files: [file], title: '2048 for Hadyn' });
+      await navigator.share({ files: [file] });
       closeShare();
       return;
     }
@@ -829,8 +829,10 @@ async function shareScore() {
     const link = document.createElement('a');
     link.href = url;
     link.download = file.name;
+    document.body.append(link);
     link.click();
-    URL.revokeObjectURL(url);
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1500);
     showShareNote('score card saved');
   } catch (err) {
     if (err instanceof Error && err.name === 'AbortError') return;
