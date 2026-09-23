@@ -542,8 +542,28 @@ input:focus-visible,
   stroke-linejoin: round;
 }
 
-.dock-btn[aria-pressed="true"] svg {
-  fill: currentColor;
+#music .music-icon {
+  position: relative;
+  display: flex;
+  width: 22px;
+  height: 22px;
+}
+
+#music .music-icon::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 26px;
+  height: 2px;
+  background: currentColor;
+  border-radius: 1px;
+  transform: translate(-50%, -50%) rotate(-45deg);
+  pointer-events: none;
+}
+
+#music[aria-pressed='true'] .music-icon::after {
+  opacity: 0;
 }
 
 .dock-btn:disabled {
