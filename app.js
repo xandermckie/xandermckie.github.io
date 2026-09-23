@@ -233,27 +233,28 @@ function placeTile(tile, r, c) {
   tile.style.setProperty('--c', String(c + 1));
 }
 
+function cellStep() {
+  const cells = document.querySelectorAll('.board-bg .cell');
+  if (cells.length < 5) return { x: 0, y: 0 };
+  const first = cells[0].getBoundingClientRect();
+  const right = cells[1].getBoundingClientRect();
+  const below = cells[4].getBoundingClientRect();
+  return { x: right.left - first.left, y: below.top - first.top };
+}
+
 function slideTile(tile, fromR, fromC, toR, toC) {
   placeTile(tile, toR, toC);
-  if (reducedMotion || (fromR === toR && fromC === toC)) {
-    tile.style.transition = '';
-    tile.style.transform = '';
-    return;
-  }
-  const deltaC = fromC - toC;
-  const deltaR = fromR - toR;
-  const tileRect = tile.getBoundingClientRect();
-  const gap = parseFloat(getComputedStyle(tile.parentElement).gap) || 8;
-  const offsetX = deltaC * (tileRect.width + gap);
-  const offsetY = deltaR * (tileRect.height + gap);
-  tile.style.transition = 'none';
-  tile.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      tile.style.transition = 'transform 200ms ease-out';
-      tile.style.transform = 'translate(0, 0)';
-    });
-  });
+  tile.getAnimations().forEach((animation) => animation.cancel());
+  tile.style.transition = '';
+  tile.style.transform = '';
+  if (reducedMotion || (fromR === toR && fromC === toC)) return;
+  const step = cellStep();
+  const offsetX = (fromC - toC) * step.x;
+  const offsetY = (fromR - toR) * step.y;
+  tile.animate(
+    [{ transform: `translate(${offsetX}px, ${offsetY}px)` }, { transform: 'translate(0, 0)' }],
+    { duration: 200, easing: 'ease-out', fill: 'both' },
+  );
 }
 
 function reindexTiles() {

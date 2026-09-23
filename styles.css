@@ -329,7 +329,7 @@ input:focus-visible,
 
 .board {
   --cell: calc((100% - 3 * var(--gap)) / 4);
-  width: min(100%, 480px, calc(100dvh - 16rem));
+  width: min(100%, 480px, calc(100svh - 16rem));
   aspect-ratio: 1;
   position: relative;
   background: var(--pink-deep);
@@ -660,7 +660,7 @@ input:focus-visible,
   }
 
   .board {
-    width: min(100%, calc(100dvh - 9rem));
+    width: min(100%, calc(100svh - 9rem));
   }
 }
 
