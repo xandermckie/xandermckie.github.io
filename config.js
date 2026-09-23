@@ -1,9 +1,9 @@
 export const PASSWORD_SHA256 =
-  '4f331fd786d5c521040a1fa4eeef266adb324cd03344c9dd61d7ce4b895596a7';
+  'e4ad93ca07acb8d908a3aa41e920ea4f4ef4f26e7f86cf8291c5db289780a5ae';
 export const PASSWORD_SHA256_P2 =
-  '3b220b715ffe46853fdf920afc5a1d7b26ea2e8ca0579d1634148297a9a87272';
+  'e4d86aacc122beb38a245107ee48aae515d58dcf419c4e2c25fb4d9df788e2d3';
 
-export const SESSION_KEY = 'anniv-2048-auth';
+export const SESSION_KEY = 'anniv-2048-auth-2';
 export const BEST_KEY = 'anniv-2048-best';
 
 export const WELCOME_TEXT_P1 =

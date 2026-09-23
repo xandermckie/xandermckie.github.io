@@ -143,18 +143,35 @@ const ui = {
   remaining: TIMED_SECONDS,
   timerId: 0,
   deadline: 0,
-  lastSpawn: null,
-  lastMerged: new Set(),
   tileMap: new Map(),
   nextTileId: 0,
   p1State: null,
   p2State: null,
   activePlayer: 1,
   versusScores: { p1: 0, p2: 0 },
+  acknowledgedWin: false,
 };
+
+function captionFor(value) {
+  return CAPTIONS[value] || `tile ${value}`;
+}
 
 function getTileId(r, c, value) {
   return `${r}-${c}-${value}-${ui.nextTileId++}`;
+}
+
+function attachPhoto(tile, value) {
+  const face = tile.querySelector('.tile-face');
+  if (!face) return;
+  let img = tile.querySelector('img');
+  if (!img) {
+    img = document.createElement('img');
+    img.alt = '';
+    face.append(img);
+  }
+  img.addEventListener('load', () => tile.classList.add('has-photo'), { once: true });
+  img.addEventListener('error', () => img.remove(), { once: true });
+  img.src = PHOTO_PATH(value);
 }
 
 function createTileElement(id, r, c, value) {
@@ -167,141 +184,179 @@ function createTileElement(id, r, c, value) {
   tile.dataset.value = String(value);
   tile.style.setProperty('--r', String(r + 1));
   tile.style.setProperty('--c', String(c + 1));
-  tile.setAttribute('aria-label', CAPTIONS[value] || `tile ${value}`);
+  tile.setAttribute('aria-label', captionFor(value));
+
+  const face = document.createElement('span');
+  face.className = 'tile-face';
 
   const fallback = document.createElement('span');
   fallback.className = 'tile-fallback';
   fallback.textContent = String(value);
-  tile.append(fallback);
-
-  const img = document.createElement('img');
-  img.alt = '';
-  img.src = PHOTO_PATH(value);
-  img.addEventListener('load', () => tile.classList.add('has-photo'), { once: true });
-  img.addEventListener('error', () => img.remove(), { once: true });
-  tile.append(img);
+  face.append(fallback);
+  tile.append(face);
+  attachPhoto(tile, value);
 
   tile.addEventListener('click', () => {
     if (ignoreTileClick) {
       ignoreTileClick = false;
       return;
     }
-    openCaption(value, img);
+    const current = Number(tile.dataset.value);
+    openCaption(current, tile.querySelector('img'));
   });
 
   return tile;
 }
 
-function renderTiles(animateSpawn) {
-  const container = $('tiles');
-  const oldMap = new Map(ui.tileMap);
-  const newMap = new Map();
-  const gridSnapshot = new Map();
+function updateTileValue(tile, value) {
+  tile.dataset.value = String(value);
+  tile.setAttribute('aria-label', captionFor(value));
+  tile.classList.remove('has-photo');
+  const fallback = tile.querySelector('.tile-fallback');
+  if (fallback) fallback.textContent = String(value);
+  attachPhoto(tile, value);
+}
 
-  for (let r = 0; r < SIZE; r += 1) {
-    for (let c = 0; c < SIZE; c += 1) {
-      const value = ui.state.grid[r][c];
-      if (value) gridSnapshot.set(`${r},${c}`, value);
-    }
+function popTile(tile) {
+  if (reducedMotion) return;
+  const face = tile.querySelector('.tile-face');
+  if (!face) return;
+  face.classList.remove('tile-pop');
+  void face.offsetWidth;
+  face.classList.add('tile-pop');
+}
+
+function placeTile(tile, r, c) {
+  tile.dataset.r = String(r);
+  tile.dataset.c = String(c);
+  tile.style.setProperty('--r', String(r + 1));
+  tile.style.setProperty('--c', String(c + 1));
+}
+
+function slideTile(tile, fromR, fromC, toR, toC) {
+  placeTile(tile, toR, toC);
+  if (reducedMotion || (fromR === toR && fromC === toC)) {
+    tile.style.transition = '';
+    tile.style.transform = '';
+    return;
   }
+  const deltaC = fromC - toC;
+  const deltaR = fromR - toR;
+  const tileRect = tile.getBoundingClientRect();
+  const gap = parseFloat(getComputedStyle(tile.parentElement).gap) || 8;
+  const offsetX = deltaC * (tileRect.width + gap);
+  const offsetY = deltaR * (tileRect.height + gap);
+  tile.style.transition = 'none';
+  tile.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      tile.style.transition = 'transform 200ms ease-out';
+      tile.style.transform = 'translate(0, 0)';
+    });
+  });
+}
 
+function reindexTiles() {
+  const next = new Map();
+  for (const tile of $('tiles').querySelectorAll('.tile')) {
+    if (tile.dataset.dropping === '1') continue;
+    next.set(`${tile.dataset.r},${tile.dataset.c}`, tile);
+  }
+  ui.tileMap = next;
+}
+
+function paintTiles() {
+  const container = $('tiles');
+  container.replaceChildren();
+  ui.tileMap = new Map();
   for (let r = 0; r < SIZE; r += 1) {
     for (let c = 0; c < SIZE; c += 1) {
       const value = ui.state.grid[r][c];
       if (!value) continue;
+      const tile = createTileElement(getTileId(r, c, value), r, c, value);
+      container.append(tile);
+      ui.tileMap.set(`${r},${c}`, tile);
+    }
+  }
+}
 
-      let reused = null;
-      for (const [id, tile] of oldMap) {
-        const tileValue = parseInt(tile.dataset.value, 10);
-        if (tileValue === value) {
-          reused = tile;
-          oldMap.delete(id);
-          break;
-        }
-      }
+function animateMotions(motions, spawned) {
+  const byDest = new Map();
+  for (const motion of motions) {
+    const key = `${motion.toR},${motion.toC}`;
+    if (!byDest.has(key)) byDest.set(key, []);
+    byDest.get(key).push(motion);
+  }
 
-      if (reused) {
-        const oldR = parseInt(reused.dataset.r, 10);
-        const oldC = parseInt(reused.dataset.c, 10);
-        reused.dataset.r = String(r);
-        reused.dataset.c = String(c);
-        reused.style.setProperty('--r', String(r + 1));
-        reused.style.setProperty('--c', String(c + 1));
-        reused.classList.remove('tile-new', 'tile-merged');
-
-        if (oldR !== r || oldC !== c) {
-          const deltaC = oldC - c;
-          const deltaR = oldR - r;
-          
-          const tileRect = reused.getBoundingClientRect();
-          const cellWidth = tileRect.width;
-          const cellHeight = tileRect.height;
-          const container = reused.parentElement;
-          const gap = parseFloat(getComputedStyle(container).gap) || 8;
-          
-          const offsetX = deltaC * (cellWidth + gap);
-          const offsetY = deltaR * (cellHeight + gap);
-          
-          reused.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
-          reused.style.transition = 'none';
-          
-          requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-              reused.style.transition = 'transform 200ms ease-out, opacity 180ms ease-out';
-              reused.style.transform = 'translate(0, 0)';
-            });
-          });
-        }
-
-        const isMerged =
-          !reducedMotion &&
-          ui.lastMerged.has(`${r},${c}`) &&
-          (oldR !== r || oldC !== c);
-        if (isMerged) reused.classList.add('tile-merged');
-
-        newMap.set(reused.dataset.id, reused);
-      } else {
-        const id = getTileId(r, c, value);
-        const tile = createTileElement(id, r, c, value);
-        const isSpawn =
-          animateSpawn &&
-          ui.lastSpawn &&
-          ui.lastSpawn.r === r &&
-          ui.lastSpawn.c === c &&
-          ui.lastSpawn.value === value;
-        if (!reducedMotion && isSpawn) {
-          tile.classList.add('tile-new');
-        }
-        newMap.set(id, tile);
-        container.append(tile);
-      }
+  for (const [key, group] of byDest) {
+    const [toR, toC] = key.split(',').map((part) => Number(part));
+    const tiles = group.map((motion) => ui.tileMap.get(`${motion.fromR},${motion.fromC}`));
+    if (group.length >= 2 && tiles[0] && tiles[1]) {
+      const keep = tiles[0];
+      const drop = tiles[1];
+      updateTileValue(keep, group[0].value);
+      drop.dataset.dropping = '1';
+      drop.style.pointerEvents = 'none';
+      keep.style.zIndex = '2';
+      drop.style.zIndex = '1';
+      slideTile(keep, group[0].fromR, group[0].fromC, toR, toC);
+      slideTile(drop, group[1].fromR, group[1].fromC, toR, toC);
+      popTile(keep);
+      window.setTimeout(() => drop.remove(), reducedMotion ? 0 : 220);
+    } else if (tiles[0]) {
+      slideTile(tiles[0], group[0].fromR, group[0].fromC, toR, toC);
     }
   }
 
-  for (const tile of oldMap.values()) {
-    tile.remove();
+  if (spawned) {
+    const tile = createTileElement(
+      getTileId(spawned.r, spawned.c, spawned.value),
+      spawned.r,
+      spawned.c,
+      spawned.value,
+    );
+    $('tiles').append(tile);
+    popTile(tile);
   }
 
-  ui.tileMap = newMap;
+  reindexTiles();
+}
+
+function versusPair() {
+  const p1 = ui.activePlayer === 1 ? ui.state.score : ui.versusScores.p1;
+  const p2 = ui.activePlayer === 2 ? ui.state.score : ui.versusScores.p2;
+  return { p1, p2 };
 }
 
 function syncScores() {
+  const scoreCard = $('score-card');
+  const bestCard = $('best-card');
   if (ui.mode === 'versus') {
-    const p1Score = ui.activePlayer === 1 ? ui.state.score : ui.versusScores.p1;
-    const p2Score = ui.activePlayer === 2 ? ui.state.score : ui.versusScores.p2;
-    $('score').textContent = `P1: ${p1Score} | P2: ${p2Score}`;
-    $('best').textContent = String(Math.max(p1Score, p2Score));
+    const { p1, p2 } = versusPair();
+    $('score-label').textContent = 'p1';
+    $('best-label').textContent = 'p2';
+    $('score').textContent = String(p1);
+    $('best').textContent = String(p2);
+    scoreCard.classList.toggle('is-active', ui.activePlayer === 1);
+    bestCard.classList.toggle('is-active', ui.activePlayer === 2);
   } else {
+    $('score-label').textContent = 'score';
+    $('best-label').textContent = 'best';
     $('score').textContent = String(ui.state.score);
     ui.best = saveBest(ui.mode, ui.state.score);
     $('best').textContent = String(ui.best);
+    scoreCard.classList.remove('is-active');
+    bestCard.classList.remove('is-active');
   }
   $('undo').disabled = ui.state.history.length === 0;
 }
 
-function setOverlay(show, title, copy) {
+function setOverlay(show, title, copy, kind = '') {
   const overlay = $('overlay');
   overlay.classList.toggle('hidden', !show);
+  overlay.dataset.kind = show ? kind : '';
+  $('overlay-continue').classList.toggle('hidden', kind !== 'win');
+  $('overlay-undo').classList.toggle('hidden', kind === 'win' || kind === 'versus');
   if (show) {
     $('overlay-title').textContent = title;
     $('overlay-copy').textContent = copy;
@@ -310,14 +365,22 @@ function setOverlay(show, title, copy) {
 
 function checkEnd() {
   if (ui.mode === 'versus') {
-    if (ui.state.over) {
-      showPassDevice();
+    if (ui.state.over) finishVersusTurn();
+    else {
+      setOverlay(false);
+      updateTurnBanner();
     }
     return;
   }
   if (ui.mode === 'timed' && ui.remaining <= 0) {
     ui.state.over = true;
-    setOverlay(true, 'time', 'the clock ran out.');
+    pauseTimer();
+    setOverlay(true, 'time', 'the clock ran out.', 'over');
+    return;
+  }
+  if (ui.state.won && !ui.acknowledgedWin) {
+    pauseTimer();
+    setOverlay(true, '2048', CAPTIONS[2048], 'win');
     return;
   }
   if (!ui.state.over) {
@@ -325,9 +388,9 @@ function checkEnd() {
     return;
   }
   if (ui.mode === 'zen') {
-    setOverlay(true, 'paused', 'no moves left — undo and keep going.');
+    setOverlay(true, 'paused', 'no moves left — undo and keep going.', 'over');
   } else {
-    setOverlay(true, 'game over', 'beautiful run. try again?');
+    setOverlay(true, 'game over', 'beautiful run. try again?', 'over');
   }
 }
 
@@ -344,78 +407,95 @@ function closePassDevice() {
   $('pass-device').classList.add('hidden');
 }
 
-function switchPlayer() {
-  closePassDevice();
+function snapshotState() {
+  return {
+    grid: ui.state.grid.map((row) => row.slice()),
+    score: ui.state.score,
+    history: ui.state.history.map((entry) => ({
+      grid: entry.grid.map((row) => row.slice()),
+      score: entry.score,
+    })),
+    over: ui.state.over,
+    won: ui.state.won,
+  };
+}
+
+function saveActiveVersusSnapshot() {
+  const snapshot = snapshotState();
   if (ui.activePlayer === 1) {
     ui.versusScores.p1 = ui.state.score;
-    ui.p1State = {
-      grid: ui.state.grid.map((r) => r.slice()),
-      score: ui.state.score,
-      history: ui.state.history.map((h) => ({
-        grid: h.grid.map((r) => r.slice()),
-        score: h.score,
-      })),
-      over: ui.state.over,
-    };
-    ui.activePlayer = 2;
-    if (!ui.p2State) {
-      ui.state = startGame();
-    } else {
-      ui.state.grid = ui.p2State.grid.map((r) => r.slice());
-      ui.state.score = ui.p2State.score;
-      ui.state.history = ui.p2State.history.map((h) => ({
-        grid: h.grid.map((r) => r.slice()),
-        score: h.score,
-      }));
-      ui.state.over = ui.p2State.over;
-    }
+    ui.p1State = snapshot;
   } else {
     ui.versusScores.p2 = ui.state.score;
-    ui.p2State = {
-      grid: ui.state.grid.map((r) => r.slice()),
-      score: ui.state.score,
-      history: ui.state.history.map((h) => ({
-        grid: h.grid.map((r) => r.slice()),
-        score: h.score,
-      })),
-      over: ui.state.over,
-    };
-    ui.activePlayer = 1;
-    ui.state.grid = ui.p1State.grid.map((r) => r.slice());
-    ui.state.score = ui.p1State.score;
-    ui.state.history = ui.p1State.history.map((h) => ({
-      grid: h.grid.map((r) => r.slice()),
-      score: h.score,
-    }));
-    ui.state.over = ui.p1State.over;
+    ui.p2State = snapshot;
   }
+}
 
-  if (ui.p1State && ui.p1State.over && ui.p2State && ui.p2State.over) {
-    const p1 = ui.versusScores.p1;
-    const p2 = ui.versusScores.p2;
-    const winner = p1 > p2 ? 1 : p1 < p2 ? 2 : 0;
-    if (winner === 0) {
-      setOverlay(true, 'Tie!', `Both scored ${p1}. Play again?`);
-    } else {
-      setOverlay(
-        true,
-        `Player ${winner} wins!`,
-        `${p1} vs ${p2}. Ready for a rematch?`,
-      );
-    }
+function restoreSnapshot(snapshot) {
+  ui.state.grid = snapshot.grid.map((row) => row.slice());
+  ui.state.score = snapshot.score;
+  ui.state.history = snapshot.history.map((entry) => ({
+    grid: entry.grid.map((row) => row.slice()),
+    score: entry.score,
+  }));
+  ui.state.over = snapshot.over;
+  ui.state.won = snapshot.won;
+}
+
+function otherPlayerIsOver() {
+  const other = ui.activePlayer === 1 ? ui.p2State : ui.p1State;
+  return Boolean(other?.over);
+}
+
+function showVersusResult() {
+  const { p1, p2 } = versusPair();
+  const winner = p1 > p2 ? 1 : p1 < p2 ? 2 : 0;
+  $('score-card').classList.remove('is-active');
+  $('best-card').classList.remove('is-active');
+  document.getElementById('turn-banner')?.classList.add('hidden');
+  if (winner === 0) {
+    setOverlay(true, 'tie', `both scored ${p1}. play again?`, 'versus');
   } else {
-    ui.tileMap.clear();
-    ui.nextTileId = 0;
-    $('tiles').replaceChildren();
-    syncScores();
-    renderTiles(false);
-    updateTurnBanner();
+    setOverlay(true, `player ${winner} wins`, `${p1} vs ${p2}. ready for a rematch?`, 'versus');
   }
+}
+
+function finishVersusTurn() {
+  saveActiveVersusSnapshot();
+  syncScores();
+  if (otherPlayerIsOver()) showVersusResult();
+  else showPassDevice();
+}
+
+function switchPlayer() {
+  closePassDevice();
+  saveActiveVersusSnapshot();
+  if (ui.activePlayer === 1) {
+    ui.activePlayer = 2;
+    if (!ui.p2State) ui.state = startGame();
+    else restoreSnapshot(ui.p2State);
+  } else {
+    ui.activePlayer = 1;
+    restoreSnapshot(ui.p1State);
+  }
+  ui.acknowledgedWin = false;
+  ui.nextTileId = 0;
+  setOverlay(false);
+  syncScores();
+  paintTiles();
+  updateTurnBanner();
+  $('board').focus();
 }
 
 function stopTimer() {
   if (ui.timerId) window.clearInterval(ui.timerId);
   ui.timerId = 0;
+}
+
+function pauseTimer() {
+  if (ui.mode !== 'timed' || !ui.timerId) return;
+  ui.remaining = Math.max(0, Math.ceil((ui.deadline - Date.now()) / 1000));
+  stopTimer();
 }
 
 function tickTimer() {
@@ -446,16 +526,13 @@ function newGame() {
     ui.versusScores = { p1: 0, p2: 0 };
   }
   ui.state = startGame();
-  ui.lastSpawn = null;
-  ui.lastMerged = new Set();
+  ui.acknowledgedWin = false;
   ui.remaining = TIMED_SECONDS;
   ui.tileMap.clear();
   ui.nextTileId = 0;
-  const container = $('tiles');
-  container.replaceChildren();
   setOverlay(false);
   syncScores();
-  renderTiles(true);
+  paintTiles();
   startTimer();
   updateTurnBanner();
 }
@@ -472,37 +549,38 @@ function updateTurnBanner() {
   }
 }
 
+function winOverlayOpen() {
+  const overlay = document.getElementById('overlay');
+  return Boolean(overlay && !overlay.classList.contains('hidden') && overlay.dataset.kind === 'win');
+}
+
+function continueWin() {
+  ui.acknowledgedWin = true;
+  setOverlay(false);
+  if (ui.mode === 'timed' && ui.remaining > 0) startTimer();
+  const board = document.getElementById('board');
+  if (board) board.focus();
+  checkEnd();
+}
+
 function applyMove(dir) {
   if (!ui.state || ui.state.over) return;
+  if (winOverlayOpen()) return;
   if (ui.mode === 'timed' && ui.remaining <= 0) return;
-  const before = ui.state.grid.map((row) => row.slice());
   const result = move(ui.state, dir);
   if (!result.moved) return;
-  ui.lastSpawn = result.spawned;
-  ui.lastMerged = new Set();
-  for (let r = 0; r < SIZE; r += 1) {
-    for (let c = 0; c < SIZE; c += 1) {
-      if (ui.state.grid[r][c] && ui.state.grid[r][c] === before[r][c] * 2 && before[r][c] !== 0) {
-        // ponytail: mark cells that doubled in place; good enough for pop
-        if (result.scoreGained) ui.lastMerged.add(`${r},${c}`);
-      }
-    }
-  }
+  animateMotions(result.motions, result.spawned);
   syncScores();
-  renderTiles(true);
   checkEnd();
 }
 
 function doUndo() {
   if (!undo(ui.state)) return;
-  if (ui.mode === 'timed' && ui.remaining <= 0) {
-    ui.remaining = 1;
-    startTimer();
-  }
-  ui.lastSpawn = null;
-  ui.lastMerged = new Set();
+  if (!ui.state.won) ui.acknowledgedWin = false;
+  if (ui.mode === 'timed' && ui.remaining <= 0) ui.remaining = 1;
+  if (ui.mode === 'timed' && !ui.state.won && ui.remaining > 0) startTimer();
   syncScores();
-  renderTiles(false);
+  paintTiles();
   checkEnd();
 }
 
@@ -534,6 +612,7 @@ function bindSwipe(board) {
   let tracking = false;
 
   board.addEventListener('pointerdown', (event) => {
+    ignoreTileClick = false;
     tracking = true;
     x0 = event.clientX;
     y0 = event.clientY;
@@ -631,7 +710,11 @@ async function shareCard() {
   ctx.font = '600 42px "Playfair Display", Georgia, serif';
   ctx.fillText('2048 for Hadyn', 48, 72);
   ctx.font = '600 28px Inter, sans-serif';
-  ctx.fillText(`score ${ui.state.score}   best ${ui.best}`, 48, 120);
+  const scoreLine =
+    ui.mode === 'versus'
+      ? `P1 ${versusPair().p1}   P2 ${versusPair().p2}`
+      : `score ${ui.state.score}   best ${ui.best}`;
+  ctx.fillText(scoreLine, 48, 120);
   ctx.font = '400 22px Inter, sans-serif';
   ctx.fillText(new Date().toLocaleDateString(), 48, 156);
 
@@ -653,7 +736,9 @@ async function shareCard() {
       ctx.fill();
       const value = ui.state.grid[r][c];
       if (!value) continue;
-      const img = document.querySelector(`.tile[data-r="${r}"][data-c="${c}"] img`);
+      const img = document.querySelector(
+        `.tile[data-r="${r}"][data-c="${c}"]:not([data-dropping="1"]) img`,
+      );
       if (img && img.naturalWidth) {
         ctx.save();
         roundRect(ctx, x, y, cell, cell, 16);
@@ -683,7 +768,7 @@ async function shareCard() {
       await navigator.share({
         files: [file],
         title: '2048 for Hadyn',
-        text: `score ${ui.state.score}`,
+        text: scoreLine,
       });
       return;
     } catch (err) {
@@ -758,6 +843,7 @@ function bindGame() {
   });
   $('overlay-new').addEventListener('click', () => newGame());
   $('overlay-undo').addEventListener('click', () => doUndo());
+  $('overlay-continue').addEventListener('click', continueWin);
 }
 
 function openGame({ greet }) {

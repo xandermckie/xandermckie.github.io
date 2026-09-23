@@ -259,6 +259,10 @@ input:focus-visible,
   font-size: 1.125rem;
 }
 
+.score-card.is-active {
+  border-color: #db2777;
+}
+
 .modes {
   display: flex;
   gap: 4px;
@@ -359,17 +363,28 @@ input:focus-visible,
 }
 
 .tile {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
   border-radius: 12px;
-  overflow: hidden;
-  background: var(--pink);
+  background: transparent;
   border: 1px solid var(--pink-border);
-  display: grid;
-  place-items: center;
   cursor: pointer;
-  transition: transform 200ms ease-out, opacity 180ms var(--ease);
-  will-change: transform;
   grid-column: var(--c);
   grid-row: var(--r);
+}
+
+.tile-face {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: inherit;
+  background: var(--pink);
 }
 
 .tile img {
@@ -380,15 +395,6 @@ input:focus-visible,
   object-fit: cover;
 }
 
-.tile.has-photo {
-  border-color: transparent;
-  background: var(--black);
-}
-
-.tile.has-photo .tile-fallback {
-  display: none;
-}
-
 .tile-fallback {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
@@ -397,11 +403,61 @@ input:focus-visible,
   z-index: 1;
 }
 
-.tile-new {
-  animation: pop 180ms var(--ease);
+.tile[data-value='2'] .tile-face {
+  background: #ffffff;
+}
+.tile[data-value='4'] .tile-face {
+  background: #fce7f3;
+}
+.tile[data-value='8'] .tile-face {
+  background: #fbcfe8;
+}
+.tile[data-value='16'] .tile-face {
+  background: #f9a8d4;
+}
+.tile[data-value='32'] .tile-face {
+  background: #f472b6;
+}
+.tile[data-value='64'] .tile-face {
+  background: #ec4899;
+}
+.tile[data-value='128'] .tile-face {
+  background: #db2777;
+}
+.tile[data-value='256'] .tile-face {
+  background: #be185d;
+}
+.tile[data-value='512'] .tile-face {
+  background: #9d174d;
+}
+.tile[data-value='1024'] .tile-face {
+  background: #831843;
+}
+.tile[data-value='64'] .tile-fallback,
+.tile[data-value='128'] .tile-fallback,
+.tile[data-value='256'] .tile-fallback,
+.tile[data-value='512'] .tile-fallback,
+.tile[data-value='1024'] .tile-fallback,
+.tile[data-value='2048'] .tile-fallback {
+  color: var(--white);
+}
+.tile[data-value='2048'] .tile-face {
+  background: var(--black);
 }
 
-.tile-merged {
+.tile.has-photo {
+  border-color: transparent;
+}
+
+.tile.has-photo .tile-face {
+  background: var(--black);
+}
+
+.tile.has-photo .tile-fallback {
+  display: none;
+}
+
+.tile-face.tile-pop {
   animation: pop 220ms var(--ease);
 }
 
@@ -609,13 +665,11 @@ input:focus-visible,
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .tile,
   .btn {
     transition: none;
   }
 
-  .tile-new,
-  .tile-merged {
+  .tile-face.tile-pop {
     animation: none;
   }
 }

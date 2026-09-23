@@ -138,12 +138,12 @@
             <p>for Hadyn</p>
           </div>
           <div class="scores">
-            <div class="score-card">
-              <span>score</span>
+            <div class="score-card" id="score-card">
+              <span id="score-label">score</span>
               <strong id="score">0</strong>
             </div>
-            <div class="score-card">
-              <span>best</span>
+            <div class="score-card" id="best-card">
+              <span id="best-label">best</span>
               <strong id="best">0</strong>
             </div>
             <div class="score-card hidden" id="timer-card">
@@ -202,6 +202,9 @@
               <h2 id="overlay-title"></h2>
               <p id="overlay-copy"></p>
               <div class="overlay-actions">
+                <button class="btn btn-primary hidden" type="button" id="overlay-continue">
+                  Keep going
+                </button>
                 <button class="btn btn-secondary" type="button" id="overlay-undo">
                   Undo
                 </button>

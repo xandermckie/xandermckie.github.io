@@ -151,4 +151,47 @@ function grid(rows) {
   assert.equal(filled.length, 2);
 }
 
+{
+  const merged = slideLine([2, 2, 0, 0]);
+  assert.equal(merged.placed[0].merged, true);
+  assert.equal(merged.placed[0].value, 4);
+  assert.deepEqual(merged.placed[0].from, [0, 1]);
+}
+
+{
+  const state = createGame(() => 0);
+  state.grid = grid([
+    [2, 2, 0, 0],
+    [0, 0, 0, 0],
+    [0, 0, 0, 0],
+    [0, 0, 0, 0],
+  ]);
+  const result = move(state, 'left');
+  const merged = result.motions.filter((motion) => motion.merged);
+  assert.equal(merged.length, 2);
+  assert.deepEqual(
+    merged.map((motion) => [motion.fromC, motion.toC]),
+    [
+      [0, 0],
+      [1, 0],
+    ],
+  );
+}
+
+{
+  const state = createGame(() => 0);
+  state.grid = grid([
+    [1024, 1024, 0, 0],
+    [0, 0, 0, 0],
+    [0, 0, 0, 0],
+    [0, 0, 0, 0],
+  ]);
+  move(state, 'left');
+  assert.equal(state.won, true);
+  assert.equal(state.grid[0][0], 2048);
+  assert.equal(undo(state), true);
+  assert.equal(state.won, false);
+  assert.equal(state.grid[0][0], 1024);
+}
+
 console.log('ok');

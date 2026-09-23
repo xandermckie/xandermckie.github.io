@@ -46,24 +46,38 @@ export function startGame(rng = Math.random) {
 }
 
 export function slideLine(line) {
-  const nums = line.filter((v) => v !== 0);
-  const next = [];
+  const entries = [];
+  line.forEach((value, index) => {
+    if (value !== 0) entries.push({ value, from: index });
+  });
+
+  const placed = [];
   let score = 0;
   let i = 0;
-  while (i < nums.length) {
-    if (i + 1 < nums.length && nums[i] === nums[i + 1]) {
-      const merged = nums[i] * 2;
-      next.push(merged);
+  while (i < entries.length) {
+    if (i + 1 < entries.length && entries[i].value === entries[i + 1].value) {
+      const merged = entries[i].value * 2;
+      placed.push({
+        value: merged,
+        from: [entries[i].from, entries[i + 1].from],
+        merged: true,
+      });
       score += merged;
       i += 2;
     } else {
-      next.push(nums[i]);
+      placed.push({
+        value: entries[i].value,
+        from: [entries[i].from],
+        merged: false,
+      });
       i += 1;
     }
   }
-  while (next.length < SIZE) next.push(0);
-  const moved = next.some((v, idx) => v !== line[idx]);
-  return { line: next, score, moved };
+  while (placed.length < SIZE) placed.push({ value: 0, from: [], merged: false });
+
+  const next = placed.map((cell) => cell.value);
+  const moved = next.some((value, idx) => value !== line[idx]);
+  return { line: next, score, moved, placed };
 }
 
 function readCol(grid, c) {
@@ -76,12 +90,40 @@ function writeCol(grid, c, col) {
   });
 }
 
+function axisIndex(dir, index) {
+  if (dir === 'left' || dir === 'up') return index;
+  return SIZE - 1 - index;
+}
+
+function motionsFromLine(dir, fixed, result) {
+  const motions = [];
+  if (!result.moved) return motions;
+  const horizontal = dir === 'left' || dir === 'right';
+  result.placed.forEach((cell, toIndex) => {
+    if (!cell.value) return;
+    const toAxis = axisIndex(dir, toIndex);
+    cell.from.forEach((fromIndex) => {
+      const fromAxis = axisIndex(dir, fromIndex);
+      motions.push({
+        fromR: horizontal ? fixed : fromAxis,
+        fromC: horizontal ? fromAxis : fixed,
+        toR: horizontal ? fixed : toAxis,
+        toC: horizontal ? toAxis : fixed,
+        value: cell.value,
+        merged: cell.merged,
+      });
+    });
+  });
+  return motions;
+}
+
 export function move(state, dir) {
-  if (state.over) return { moved: false, scoreGained: 0, spawned: null };
+  if (state.over) return { moved: false, scoreGained: 0, spawned: null, motions: [] };
 
   const prev = { grid: cloneGrid(state.grid), score: state.score };
   let scoreGained = 0;
   let moved = false;
+  const motions = [];
 
   if (dir === 'left' || dir === 'right') {
     for (let r = 0; r < SIZE; r += 1) {
@@ -91,6 +133,7 @@ export function move(state, dir) {
       state.grid[r] = dir === 'left' ? result.line : result.line.slice().reverse();
       scoreGained += result.score;
       if (result.moved) moved = true;
+      motions.push(...motionsFromLine(dir, r, result));
     }
   } else {
     for (let c = 0; c < SIZE; c += 1) {
@@ -101,10 +144,11 @@ export function move(state, dir) {
       writeCol(state.grid, c, written);
       scoreGained += result.score;
       if (result.moved) moved = true;
+      motions.push(...motionsFromLine(dir, c, result));
     }
   }
 
-  if (!moved) return { moved: false, scoreGained: 0, spawned: null };
+  if (!moved) return { moved: false, scoreGained: 0, spawned: null, motions: [] };
 
   state.history.push(prev);
   if (state.history.length > 50) state.history.shift();
@@ -112,7 +156,7 @@ export function move(state, dir) {
   if (state.grid.flat().includes(2048)) state.won = true;
   const spawned = spawn(state);
   state.over = !canMove(state);
-  return { moved: true, scoreGained, spawned };
+  return { moved: true, scoreGained, spawned, motions };
 }
 
 export function canMove(state) {
@@ -133,5 +177,6 @@ export function undo(state) {
   state.grid = prev.grid;
   state.score = prev.score;
   state.over = false;
+  state.won = state.grid.flat().includes(2048);
   return true;
 }
