@@ -247,7 +247,7 @@ function slideTile(tile, fromR, fromC, toR, toC) {
   tile.getAnimations().forEach((animation) => animation.cancel());
   tile.style.transition = '';
   tile.style.transform = '';
-  if (reducedMotion || (fromR === toR && fromC === toC)) return;
+  if (fromR === toR && fromC === toC) return;
   const step = cellStep();
   const offsetX = (fromC - toC) * step.x;
   const offsetY = (fromR - toR) * step.y;
@@ -303,7 +303,7 @@ function animateMotions(motions, spawned) {
       slideTile(keep, group[0].fromR, group[0].fromC, toR, toC);
       slideTile(drop, group[1].fromR, group[1].fromC, toR, toC);
       popTile(keep);
-      window.setTimeout(() => drop.remove(), reducedMotion ? 0 : 220);
+      window.setTimeout(() => drop.remove(), 220);
     } else if (tiles[0]) {
       slideTile(tiles[0], group[0].fromR, group[0].fromC, toR, toC);
     }
