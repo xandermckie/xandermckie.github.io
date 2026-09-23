@@ -114,6 +114,26 @@
     </div>
 
     <div
+      class="modal-root hidden"
+      id="share-sheet"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="share-title"
+    >
+      <div class="scrim" data-close="share"></div>
+      <div class="sheet">
+        <h2 id="share-title">Share</h2>
+        <p class="hidden" id="share-note"></p>
+        <button class="btn btn-primary btn-block" type="button" id="share-link">
+          Share link
+        </button>
+        <button class="btn btn-secondary btn-block" type="button" id="share-score">
+          Share high score
+        </button>
+      </div>
+    </div>
+
+    <div
       class="modal-root center hidden"
       id="pass-device"
       role="dialog"

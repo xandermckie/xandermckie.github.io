@@ -570,6 +570,7 @@ function applyMove(dir) {
   if (ui.mode === 'timed' && ui.remaining <= 0) return;
   const result = move(ui.state, dir);
   if (!result.moved) return;
+  if (ui.mode !== 'zen') ui.state.history = ui.state.history.slice(-1);
   animateMotions(result.motions, result.spawned);
   syncScores();
   checkEnd();
@@ -687,6 +688,12 @@ function bindKeys() {
         return;
       }
 
+      const shareSheet = document.getElementById('share-sheet');
+      if (shareSheet && !shareSheet.classList.contains('hidden')) {
+        if (event.key === 'Escape') closeShare();
+        return;
+      }
+
       const dir =
         map[event.code] || map[event.key] || map[event.key.toLowerCase()];
       if (!dir) return;
@@ -697,91 +704,51 @@ function bindKeys() {
   );
 }
 
-async function shareCard() {
-  const canvas = document.createElement('canvas');
-  const size = 840;
-  canvas.width = size;
-  canvas.height = 980;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return;
+function openShare() {
+  const note = $('share-note');
+  note.textContent = '';
+  note.classList.add('hidden');
+  $('share-sheet').classList.remove('hidden');
+  $('share-link').focus();
+}
 
-  ctx.fillStyle = '#FCE7F3';
-  ctx.fillRect(0, 0, size, canvas.height);
-  ctx.fillStyle = '#0A0A0A';
-  ctx.font = '600 42px "Playfair Display", Georgia, serif';
-  ctx.fillText('2048 for Hadyn', 48, 72);
-  ctx.font = '600 28px Inter, sans-serif';
-  const scoreLine =
-    ui.mode === 'versus'
-      ? `P1 ${versusPair().p1}   P2 ${versusPair().p2}`
-      : `score ${ui.state.score}   best ${ui.best}`;
-  ctx.fillText(scoreLine, 48, 120);
-  ctx.font = '400 22px Inter, sans-serif';
-  ctx.fillText(new Date().toLocaleDateString(), 48, 156);
+function closeShare() {
+  const sheet = document.getElementById('share-sheet');
+  if (sheet) sheet.classList.add('hidden');
+}
 
-  const grid = 720;
-  const origin = 48;
-  const top = 200;
-  const gap = 12;
-  const cell = (grid - gap * 5) / 4;
-  ctx.fillStyle = '#FBCFE8';
-  roundRect(ctx, origin, top, grid, grid, 24);
-  ctx.fill();
+function showShareNote(message) {
+  const note = $('share-note');
+  note.textContent = message;
+  note.classList.remove('hidden');
+}
 
-  for (let r = 0; r < SIZE; r += 1) {
-    for (let c = 0; c < SIZE; c += 1) {
-      const x = origin + gap + c * (cell + gap);
-      const y = top + gap + r * (cell + gap);
-      ctx.fillStyle = '#FFFFFF';
-      roundRect(ctx, x, y, cell, cell, 16);
-      ctx.fill();
-      const value = ui.state.grid[r][c];
-      if (!value) continue;
-      const img = document.querySelector(
-        `.tile[data-r="${r}"][data-c="${c}"]:not([data-dropping="1"]) img`,
-      );
-      if (img && img.naturalWidth) {
-        ctx.save();
-        roundRect(ctx, x, y, cell, cell, 16);
-        ctx.clip();
-        ctx.drawImage(img, x, y, cell, cell);
-        ctx.restore();
-      } else {
-        ctx.fillStyle = '#FCE7F3';
-        roundRect(ctx, x, y, cell, cell, 16);
-        ctx.fill();
-        ctx.fillStyle = '#0A0A0A';
-        ctx.font = '700 36px Inter, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(String(value), x + cell / 2, y + cell / 2);
-        ctx.textAlign = 'start';
-        ctx.textBaseline = 'alphabetic';
-      }
-    }
-  }
-
-  const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
-  if (!blob) return;
-  const file = new File([blob], 'hadyn-2048.png', { type: 'image/png' });
-  if (navigator.canShare && navigator.canShare({ files: [file] })) {
-    try {
-      await navigator.share({
-        files: [file],
-        title: '2048 for Hadyn',
-        text: scoreLine,
-      });
+async function shareLink() {
+  const url = location.href;
+  try {
+    if (navigator.share) {
+      await navigator.share({ title: '2048 for Hadyn', text: '2048 for Hadyn', url });
+      closeShare();
       return;
-    } catch (err) {
-      if (err instanceof Error && err.name === 'AbortError') return;
     }
+    await navigator.clipboard.writeText(url);
+    showShareNote('link copied');
+  } catch (err) {
+    if (err instanceof Error && err.name === 'AbortError') return;
+    showShareNote('could not share the link');
   }
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = file.name;
-  a.click();
-  URL.revokeObjectURL(url);
+}
+
+function drawHeart(ctx, x, y, scale) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(scale, scale);
+  ctx.translate(-16, -18);
+  const heart = new Path2D(
+    'M16 25s-8.5-5.2-8.5-11A4.5 4.5 0 0 1 16 11.2 4.5 4.5 0 0 1 24.5 14C24.5 19.8 16 25 16 25z',
+  );
+  ctx.fill(heart);
+  ctx.restore();
 }
 
 function roundRect(ctx, x, y, w, h, r) {
@@ -793,6 +760,82 @@ function roundRect(ctx, x, y, w, h, r) {
   ctx.arcTo(x, y + h, x, y, radius);
   ctx.arcTo(x, y, x + w, y, radius);
   ctx.closePath();
+}
+
+function drawScoreCard() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 840;
+  canvas.height = 980;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('could not draw the score');
+
+  ctx.fillStyle = '#FCE7F3';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#0A0A0A';
+  for (const [x, y, scale] of [
+    [150, 150, 3.4],
+    [690, 190, 2.4],
+    [210, 860, 2.6],
+    [680, 800, 3.6],
+    [420, 120, 1.8],
+  ]) {
+    drawHeart(ctx, x, y, scale);
+  }
+
+  ctx.fillStyle = '#FFFFFF';
+  roundRect(ctx, 90, 280, 660, 460, 32);
+  ctx.fill();
+
+  ctx.fillStyle = '#0A0A0A';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'alphabetic';
+  ctx.font = '600 52px "Playfair Display", Georgia, serif';
+  ctx.fillText('2048 for Hadyn', 420, 370);
+
+  if (ui.mode === 'versus') {
+    const { p1, p2 } = versusPair();
+    ctx.font = '600 28px Inter, sans-serif';
+    ctx.fillText('p1', 280, 460);
+    ctx.fillText('p2', 560, 460);
+    ctx.font = '700 96px Inter, sans-serif';
+    ctx.fillText(String(p1), 280, 580);
+    ctx.fillText(String(p2), 560, 580);
+  } else {
+    ctx.font = '600 28px Inter, sans-serif';
+    ctx.fillText('best', 420, 460);
+    ctx.font = '700 140px Inter, sans-serif';
+    ctx.fillText(String(ui.best), 420, 610);
+    ctx.font = '500 32px Inter, sans-serif';
+    ctx.fillText(`score ${ui.state.score}`, 420, 680);
+  }
+
+  ctx.textAlign = 'start';
+  return canvas;
+}
+
+async function shareScore() {
+  try {
+    await document.fonts.ready;
+    const canvas = drawScoreCard();
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+    if (!blob) throw new Error('could not draw the score');
+    const file = new File([blob], 'hadyn-2048.png', { type: 'image/png' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], title: '2048 for Hadyn' });
+      closeShare();
+      return;
+    }
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = file.name;
+    link.click();
+    URL.revokeObjectURL(url);
+    showShareNote('score card saved');
+  } catch (err) {
+    if (err instanceof Error && err.name === 'AbortError') return;
+    showShareNote('could not share the score');
+  }
 }
 
 function bindMusic() {
@@ -839,9 +882,7 @@ function bindGame() {
   });
   $('new-game').addEventListener('click', () => newGame());
   $('undo').addEventListener('click', () => doUndo());
-  $('share').addEventListener('click', () => {
-    shareCard().catch(() => {});
-  });
+  $('share').addEventListener('click', openShare);
   $('overlay-new').addEventListener('click', () => newGame());
   $('overlay-undo').addEventListener('click', () => doUndo());
   $('overlay-continue').addEventListener('click', continueWin);
@@ -857,17 +898,25 @@ function openGame({ greet }) {
 function bindModals() {
   $('lets-play').addEventListener('click', closeWelcome);
   $('pass-btn').addEventListener('click', switchPlayer);
+  $('share-link').addEventListener('click', () => {
+    shareLink();
+  });
+  $('share-score').addEventListener('click', () => {
+    shareScore();
+  });
   document.querySelectorAll('[data-close]').forEach((el) => {
     el.addEventListener('click', () => {
       const id = el.getAttribute('data-close');
       if (id === 'welcome') closeWelcome();
       if (id === 'caption') closeCaption();
+      if (id === 'share') closeShare();
     });
   });
   window.addEventListener('keydown', (event) => {
     if (event.key !== 'Escape') return;
     if (!$('welcome').classList.contains('hidden')) closeWelcome();
     if (!$('caption').classList.contains('hidden')) closeCaption();
+    if (!$('share-sheet').classList.contains('hidden')) closeShare();
   });
 }
 
